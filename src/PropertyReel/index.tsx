@@ -18,13 +18,14 @@ const DUSK_VIGNETTE =
   "radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(10,15,35,0.35) 100%), linear-gradient(to top, rgba(20,10,0,0.35), rgba(0,0,0,0) 35%)";
 
 const FPS = 30;
-const FACADE_FRAMES = 4 * FPS; // 0-4s (establishing + drone approach)
+const AERIAL_FRAMES = 2 * FPS; // 0-2s: escena 1, aereo estableciendo el lote
+const FACADE_FRAMES = 2 * FPS; // 2-4s: escena 2, acercamiento a la puerta dorada
 const INTERIOR_FRAMES = 1.5 * FPS; // 4-5.5s
 const POOL_FRAMES = 1.5 * FPS; // 5.5-7s
 const CLOSING_FRAMES = 1 * FPS; // 7-8s
 
 export const propertyReelDurationInFrames =
-  FACADE_FRAMES + INTERIOR_FRAMES + POOL_FRAMES + CLOSING_FRAMES;
+  AERIAL_FRAMES + FACADE_FRAMES + INTERIOR_FRAMES + POOL_FRAMES + CLOSING_FRAMES;
 
 export const PropertyReel: React.FC<z.infer<typeof propertyReelSchema>> = ({
   location,
@@ -34,8 +35,22 @@ export const PropertyReel: React.FC<z.infer<typeof propertyReelSchema>> = ({
 }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      {/* Escena 1-2: fachada al anochecer, dron acercandose a la puerta dorada */}
-      <Sequence durationInFrames={FACADE_FRAMES}>
+      {/* Escena 1: toma aerea estableciendo el lote (dron real, DJI) */}
+      <Sequence durationInFrames={AERIAL_FRAMES}>
+        <KenBurnsScene
+          src={staticFile("fotos/aerial.jpg")}
+          durationInFrames={AERIAL_FRAMES}
+          startScale={1}
+          endScale={1.14}
+          focalPoint="center 45%"
+          grade={GOLDEN_GRADE}
+          vignette="linear-gradient(to top, rgba(10,5,0,0.25), rgba(0,0,0,0) 40%)"
+          fadeIn={false}
+        />
+      </Sequence>
+
+      {/* Escena 2: fachada al anochecer, dron acercandose a la puerta dorada */}
+      <Sequence from={AERIAL_FRAMES} durationInFrames={FACADE_FRAMES}>
         <KenBurnsScene
           src={staticFile("fotos/facade.jpg")}
           durationInFrames={FACADE_FRAMES}
@@ -44,12 +59,11 @@ export const PropertyReel: React.FC<z.infer<typeof propertyReelSchema>> = ({
           focalPoint="center 38%"
           grade={GOLDEN_GRADE}
           vignette={DUSK_VIGNETTE}
-          fadeIn={false}
         />
       </Sequence>
 
       {/* Escena 3: match cut hacia el hall de doble altura */}
-      <Sequence from={FACADE_FRAMES} durationInFrames={INTERIOR_FRAMES}>
+      <Sequence from={AERIAL_FRAMES + FACADE_FRAMES} durationInFrames={INTERIOR_FRAMES}>
         <KenBurnsScene
           src={staticFile("fotos/interior-hall.jpg")}
           durationInFrames={INTERIOR_FRAMES}
@@ -61,7 +75,10 @@ export const PropertyReel: React.FC<z.infer<typeof propertyReelSchema>> = ({
       </Sequence>
 
       {/* Escena 4: dolly-in a la piscina y jacuzzi */}
-      <Sequence from={FACADE_FRAMES + INTERIOR_FRAMES} durationInFrames={POOL_FRAMES}>
+      <Sequence
+        from={AERIAL_FRAMES + FACADE_FRAMES + INTERIOR_FRAMES}
+        durationInFrames={POOL_FRAMES}
+      >
         <KenBurnsScene
           src={staticFile("fotos/piscina.jpg")}
           durationInFrames={POOL_FRAMES}
@@ -75,7 +92,7 @@ export const PropertyReel: React.FC<z.infer<typeof propertyReelSchema>> = ({
 
       {/* Escena 5: cierre estatico de noche con texto */}
       <Sequence
-        from={FACADE_FRAMES + INTERIOR_FRAMES + POOL_FRAMES}
+        from={AERIAL_FRAMES + FACADE_FRAMES + INTERIOR_FRAMES + POOL_FRAMES}
         durationInFrames={CLOSING_FRAMES}
       >
         <ClosingCard
