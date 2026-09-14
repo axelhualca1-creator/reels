@@ -10,6 +10,11 @@ import {
   propertyReelDurationInFrames,
   propertyReelSchema,
 } from "./PropertyReel";
+import {
+  CinematicTour,
+  cinematicTourDurationInFrames,
+  cinematicTourSchema,
+} from "./CinematicTour";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -35,6 +40,21 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
         fps={30}
         durationInFrames={propertyReelDurationInFrames}
+        defaultProps={{
+          location: "Samborondón",
+          agentName: "María Leonor Villegas",
+          brokerage: "RE/MAX Golden Home",
+          contact: "0993176489",
+        }}
+      />
+      <Composition
+        id="CinematicTour"
+        component={CinematicTour}
+        schema={cinematicTourSchema}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={cinematicTourDurationInFrames}
         defaultProps={{
           location: "Samborondón",
           agentName: "María Leonor Villegas",
