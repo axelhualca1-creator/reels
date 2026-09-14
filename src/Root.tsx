@@ -39,7 +39,7 @@ export const RemotionRoot: React.FC = () => {
           location: "Samborondón",
           agentName: "María Leonor Villegas",
           brokerage: "RE/MAX Golden Home",
-          contact: "",
+          contact: "0993176489",
         }}
       />
     </>
