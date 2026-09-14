@@ -5,21 +5,43 @@ import {
   calculateCaptionedVideoMetadata,
   captionedVideoSchema,
 } from "./CaptionedVideo";
+import {
+  PropertyReel,
+  propertyReelDurationInFrames,
+  propertyReelSchema,
+} from "./PropertyReel";
 
 // Each <Composition> is an entry in the sidebar!
 
 export const RemotionRoot: React.FC = () => {
   return (
-    <Composition
-      id="CaptionedVideo"
-      component={CaptionedVideo}
-      calculateMetadata={calculateCaptionedVideoMetadata}
-      schema={captionedVideoSchema}
-      width={1080}
-      height={1920}
-      defaultProps={{
-        src: staticFile("sample-video.mp4"),
-      }}
-    />
+    <>
+      <Composition
+        id="CaptionedVideo"
+        component={CaptionedVideo}
+        calculateMetadata={calculateCaptionedVideoMetadata}
+        schema={captionedVideoSchema}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          src: staticFile("sample-video.mp4"),
+        }}
+      />
+      <Composition
+        id="PropertyReel"
+        component={PropertyReel}
+        schema={propertyReelSchema}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={propertyReelDurationInFrames}
+        defaultProps={{
+          location: "Samborondón",
+          agentName: "María Leonor Villegas",
+          brokerage: "RE/MAX Golden Home",
+          contact: "",
+        }}
+      />
+    </>
   );
 };
