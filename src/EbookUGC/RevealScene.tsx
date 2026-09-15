@@ -1,5 +1,14 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  interpolate,
+  Sequence,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { BookCover } from "./BookCover";
 import { loadFonts } from "./fonts";
 
@@ -33,6 +42,9 @@ export const RevealScene: React.FC<{ authorName: string }> = ({ authorName }) =>
             "radial-gradient(ellipse at center, rgba(212,175,106,0.18) 0%, rgba(0,0,0,0) 65%)",
         }}
       />
+      <Sequence from={2} durationInFrames={20}>
+        <Audio src={staticFile("audio/pop.mp3")} volume={0.8} />
+      </Sequence>
       <div
         style={{
           opacity,

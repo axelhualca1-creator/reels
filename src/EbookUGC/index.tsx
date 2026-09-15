@@ -1,5 +1,12 @@
 import React from "react";
-import { AbsoluteFill, interpolate, Sequence, useCurrentFrame } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  interpolate,
+  Sequence,
+  staticFile,
+  useCurrentFrame,
+} from "remotion";
 import { z } from "zod";
 import { AuthorScene } from "./AuthorScene";
 import { ContentsScene } from "./ContentsScene";
@@ -62,10 +69,15 @@ export const EbookUGC: React.FC<z.infer<typeof ebookUgcSchema>> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0c0906" }}>
+      <Audio src={staticFile("audio/bg-music.mp3")} volume={0.55} />
+
       <Sequence from={hookFrom} durationInFrames={HOOK_FRAMES}>
         <FadeWrapper durationInFrames={HOOK_FRAMES}>
           <HookScene />
         </FadeWrapper>
+      </Sequence>
+      <Sequence from={hookFrom + 4} durationInFrames={20}>
+        <Audio src={staticFile("audio/pop.mp3")} volume={0.7} />
       </Sequence>
 
       <Sequence from={problemFrom} durationInFrames={PROBLEM_FRAMES}>
@@ -73,11 +85,17 @@ export const EbookUGC: React.FC<z.infer<typeof ebookUgcSchema>> = ({
           <ProblemScene />
         </FadeWrapper>
       </Sequence>
+      <Sequence from={problemFrom} durationInFrames={20}>
+        <Audio src={staticFile("audio/whoosh.mp3")} volume={0.6} />
+      </Sequence>
 
       <Sequence from={revealFrom} durationInFrames={REVEAL_FRAMES}>
         <FadeWrapper durationInFrames={REVEAL_FRAMES}>
           <RevealScene authorName={authorName} />
         </FadeWrapper>
+      </Sequence>
+      <Sequence from={revealFrom} durationInFrames={20}>
+        <Audio src={staticFile("audio/whoosh.mp3")} volume={0.6} />
       </Sequence>
 
       <Sequence from={contentsFrom} durationInFrames={CONTENTS_FRAMES}>
@@ -85,17 +103,26 @@ export const EbookUGC: React.FC<z.infer<typeof ebookUgcSchema>> = ({
           <ContentsScene />
         </FadeWrapper>
       </Sequence>
+      <Sequence from={contentsFrom} durationInFrames={20}>
+        <Audio src={staticFile("audio/whoosh.mp3")} volume={0.6} />
+      </Sequence>
 
       <Sequence from={authorFrom} durationInFrames={AUTHOR_FRAMES}>
         <FadeWrapper durationInFrames={AUTHOR_FRAMES}>
           <AuthorScene authorName={authorName} brokerage={brokerage} />
         </FadeWrapper>
       </Sequence>
+      <Sequence from={authorFrom} durationInFrames={20}>
+        <Audio src={staticFile("audio/whoosh.mp3")} volume={0.5} />
+      </Sequence>
 
       <Sequence from={ctaFrom} durationInFrames={CTA_FRAMES}>
         <FadeWrapper durationInFrames={CTA_FRAMES}>
           <CTAScene authorName={authorName} contact={contact} />
         </FadeWrapper>
+      </Sequence>
+      <Sequence from={ctaFrom} durationInFrames={20}>
+        <Audio src={staticFile("audio/whoosh.mp3")} volume={0.6} />
       </Sequence>
     </AbsoluteFill>
   );

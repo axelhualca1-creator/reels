@@ -1,5 +1,14 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  interpolate,
+  Sequence,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { loadFonts } from "./fonts";
 
 const { fontFamily } = loadFonts();
@@ -29,6 +38,9 @@ const ProblemRow: React.FC<{ text: string; delay: number }> = ({ text, delay }) 
         marginBottom: 30,
       }}
     >
+      <Sequence from={delay} durationInFrames={10}>
+        <Audio src={staticFile("audio/tick.mp3")} volume={0.5} />
+      </Sequence>
       <div
         style={{
           width: 40,

@@ -1,5 +1,14 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  interpolate,
+  Sequence,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { BookCover } from "./BookCover";
 import { loadFonts } from "./fonts";
 
@@ -36,6 +45,9 @@ export const CTAScene: React.FC<{ authorName: string; contact?: string }> = ({
             "radial-gradient(ellipse at center, rgba(212,175,106,0.2) 0%, rgba(0,0,0,0) 60%)",
         }}
       />
+      <Sequence from={2} durationInFrames={20}>
+        <Audio src={staticFile("audio/pop.mp3")} volume={0.6} />
+      </Sequence>
       <div
         style={{
           opacity: coverOpacity,

@@ -1,5 +1,14 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  interpolate,
+  Sequence,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { loadFonts } from "./fonts";
 
 const { fontFamily } = loadFonts();
@@ -31,6 +40,9 @@ const Item: React.FC<{ text: string; delay: number }> = ({ text, delay }) => {
         marginBottom: 32,
       }}
     >
+      <Sequence from={delay} durationInFrames={10}>
+        <Audio src={staticFile("audio/tick.mp3")} volume={0.45} />
+      </Sequence>
       <div
         style={{
           width: 40,
