@@ -22,7 +22,7 @@ export const CTAScene: React.FC<{ authorName: string; contact?: string }> = ({
   const { fps } = useVideoConfig();
 
   const coverProgress = spring({ frame, fps, config: { damping: 200 } });
-  const coverScale = interpolate(coverProgress, [0, 1], [0.42, 0.46]);
+  const coverScale = interpolate(coverProgress, [0, 1], [0.58, 0.62]);
   const coverOpacity = interpolate(frame, [0, 12], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",

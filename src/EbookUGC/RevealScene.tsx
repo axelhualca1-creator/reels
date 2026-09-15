@@ -48,7 +48,7 @@ export const RevealScene: React.FC<{ authorName: string }> = ({ authorName }) =>
       <div
         style={{
           opacity,
-          transform: `scale(${scale * 0.62}) rotate(${rotate}deg)`,
+          transform: `scale(${scale * 0.85}) rotate(${rotate}deg)`,
         }}
       >
         <BookCover authorName={authorName} />
