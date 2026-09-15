@@ -29,7 +29,11 @@ export const CTAScene: React.FC<{ authorName: string; contact?: string }> = ({
   });
 
   const ctaProgress = spring({ frame: frame - 22, fps, config: { damping: 200 } });
-  const bounce = interpolate(frame % 50, [0, 25, 50], [0, -10, 0]);
+
+  const swipeCycle = frame % 36;
+  const swipeProgress = interpolate(swipeCycle, [0, 36], [0, 1]);
+  const swipeY = interpolate(swipeProgress, [0, 1], [14, -18]);
+  const swipeOpacity = interpolate(swipeProgress, [0, 0.15, 0.8, 1], [0, 1, 1, 0]);
 
   return (
     <AbsoluteFill
@@ -102,14 +106,37 @@ export const CTAScene: React.FC<{ authorName: string; contact?: string }> = ({
         ) : null}
         <div
           style={{
-            fontFamily,
-            fontSize: 24,
-            color: "#d4af6a",
-            marginTop: 34,
-            transform: `translateY(${bounce}px)`,
+            marginTop: 40,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          ↑ Link en la bio
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 700,
+              fontSize: 30,
+              color: "#f5ead3",
+              opacity: swipeOpacity,
+              transform: `translateY(${swipeY}px)`,
+            }}
+          >
+            ↑
+          </div>
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 700,
+              fontSize: 26,
+              color: "#d4af6a",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginTop: 4,
+            }}
+          >
+            Desliza hacia arriba para comprar
+          </div>
         </div>
       </div>
     </AbsoluteFill>
