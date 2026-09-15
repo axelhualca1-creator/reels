@@ -10,6 +10,7 @@ import {
   propertyReelDurationInFrames,
   propertyReelSchema,
 } from "./PropertyReel";
+import { EbookUGC, ebookUgcDurationInFrames, ebookUgcSchema } from "./EbookUGC";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -38,6 +39,20 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{
           location: "Samborondón",
           agentName: "María Leonor Villegas",
+          brokerage: "RE/MAX Golden Home",
+          contact: "",
+        }}
+      />
+      <Composition
+        id="EbookUGC"
+        component={EbookUGC}
+        schema={ebookUgcSchema}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={ebookUgcDurationInFrames}
+        defaultProps={{
+          authorName: "María Leonor Villegas",
           brokerage: "RE/MAX Golden Home",
           contact: "",
         }}
