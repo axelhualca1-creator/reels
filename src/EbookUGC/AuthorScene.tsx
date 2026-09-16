@@ -9,6 +9,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { AwardsWallBackdrop } from "./AwardsWallBackdrop";
 import { loadFonts } from "./fonts";
 
 const { fontFamily } = loadFonts();
@@ -46,18 +47,18 @@ export const AuthorScene: React.FC<{ authorName: string; brokerage: string }> = 
       }}
     >
       {hasAwardsVideo ? (
-        <>
-          <AbsoluteFill>
-            <OffthreadVideo src={AWARDS_VIDEO} volume={0} style={{ objectFit: "cover" }} />
-          </AbsoluteFill>
-          <AbsoluteFill
-            style={{
-              background:
-                "linear-gradient(to top, rgba(6,4,2,0.88) 0%, rgba(6,4,2,0.55) 45%, rgba(6,4,2,0.35) 100%)",
-            }}
-          />
-        </>
-      ) : null}
+        <AbsoluteFill>
+          <OffthreadVideo src={AWARDS_VIDEO} volume={0} style={{ objectFit: "cover" }} />
+        </AbsoluteFill>
+      ) : (
+        <AwardsWallBackdrop />
+      )}
+      <AbsoluteFill
+        style={{
+          background:
+            "linear-gradient(to top, rgba(6,4,2,0.88) 0%, rgba(6,4,2,0.55) 45%, rgba(6,4,2,0.35) 100%)",
+        }}
+      />
       <div
         style={{
           height: 2,
