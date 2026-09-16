@@ -1,8 +1,22 @@
 import React from "react";
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  AbsoluteFill,
+  getStaticFiles,
+  interpolate,
+  OffthreadVideo,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 import { loadFonts } from "./fonts";
 
 const { fontFamily } = loadFonts();
+
+const AWARDS_VIDEO = staticFile("videos/awards-reveal.mp4");
+
+const awardsVideoExists = () =>
+  getStaticFiles().some((f) => f.src === AWARDS_VIDEO);
 
 export const AuthorScene: React.FC<{ authorName: string; brokerage: string }> = ({
   authorName,
@@ -10,6 +24,7 @@ export const AuthorScene: React.FC<{ authorName: string; brokerage: string }> = 
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const hasAwardsVideo = awardsVideoExists();
 
   const quoteProgress = spring({ frame, fps, config: { damping: 200 } });
   const lineWidth = interpolate(quoteProgress, [0, 1], [0, 90]);
@@ -30,6 +45,19 @@ export const AuthorScene: React.FC<{ authorName: string; brokerage: string }> = 
         textAlign: "center",
       }}
     >
+      {hasAwardsVideo ? (
+        <>
+          <AbsoluteFill>
+            <OffthreadVideo src={AWARDS_VIDEO} volume={0} style={{ objectFit: "cover" }} />
+          </AbsoluteFill>
+          <AbsoluteFill
+            style={{
+              background:
+                "linear-gradient(to top, rgba(6,4,2,0.88) 0%, rgba(6,4,2,0.55) 45%, rgba(6,4,2,0.35) 100%)",
+            }}
+          />
+        </>
+      ) : null}
       <div
         style={{
           height: 2,

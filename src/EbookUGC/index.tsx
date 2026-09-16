@@ -26,7 +26,7 @@ const HOOK_FRAMES = 3 * FPS;
 const PROBLEM_FRAMES = 5 * FPS;
 const REVEAL_FRAMES = 4 * FPS;
 const CONTENTS_FRAMES = 7 * FPS;
-const AUTHOR_FRAMES = 4 * FPS;
+const AUTHOR_FRAMES = 6 * FPS;
 const CTA_FRAMES = 4 * FPS;
 
 export const ebookUgcDurationInFrames =
