@@ -314,6 +314,12 @@
         <button onclick="logoutCashier()" class="btn-link-danger text-xs">Salir</button>
       </div>
 
+      <div id="cashier-connect-banner" hidden class="rounded-2xl p-3 text-center" style="background: color-mix(in srgb, var(--color-warn) 16%, var(--color-surface));">
+        <p class="text-xs font-bold text-warn">Falta conectar tu cuenta bancaria</p>
+        <p class="text-[11px] text-muted mt-1">Para recibir tus pagos automáticamente en cada cobro, completa tu configuración con Stripe.</p>
+        <button onclick="connectStripeAccount()" class="btn btn-warn w-full mt-2">Conectar mi cuenta bancaria</button>
+      </div>
+
       <div class="rounded-2xl p-3 text-center surface-muted">
         <p class="text-[10px] font-bold uppercase text-muted">Deuda con la red (10% semanal)</p>
         <p id="cashier-commission-owed" class="text-lg font-bold font-display tabular mt-0.5">$0.00</p>
@@ -870,10 +876,39 @@
     updateCommissionDisplay(0);
     switchView('pos');
     resetCashierScan();
+    checkStripeConnectStatus();
   }
 
   function updateCommissionDisplay(value) {
     document.getElementById('cashier-commission-owed').textContent = '$' + Number(value).toFixed(2);
+  }
+
+  async function checkStripeConnectStatus() {
+    if (!currentCashier) return;
+    try {
+      const { chargesEnabled } = await callFunction('stripe-connect-status', {
+        restaurantCode: currentCashier.code,
+        restaurantPin: currentCashier.pin,
+      });
+      document.getElementById('cashier-connect-banner').hidden = !!chargesEnabled;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function connectStripeAccount() {
+    if (!currentCashier) return;
+    try {
+      const { url } = await callFunction('stripe-connect-onboarding', {
+        restaurantCode: currentCashier.code,
+        restaurantPin: currentCashier.pin,
+        returnUrl: window.location.href.split('#')[0],
+      });
+      window.location.href = url;
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo iniciar la conexión con Stripe. Intenta de nuevo.');
+    }
   }
 
   async function handleCashierLogin() {
@@ -902,6 +937,7 @@
     updateCommissionDisplay(restaurant.commission_owed);
     switchView('pos');
     resetCashierScan();
+    checkStripeConnectStatus();
   }
 
   function logoutCashier() {
@@ -996,10 +1032,10 @@
       return;
     }
 
-    showCashierMessage('Cobrando con PayPal…', false);
+    showCashierMessage('Cobrando con la tarjeta guardada…', false);
 
     try {
-      const result = await callFunction('paypal-charge', {
+      const result = await callFunction('stripe-charge', {
         restaurantCode: currentCashier.code,
         restaurantPin: currentCashier.pin,
         clientId: foundClient.id,
@@ -1032,28 +1068,23 @@
       return;
     }
 
-    const newBalance = Math.round((Number(foundClient.balance) - amount) * 100) / 100;
+    const { data, error } = await supabaseClient.rpc('redeem_cashback', {
+      p_client_id: foundClient.id,
+      p_restaurant_id: currentCashier.id,
+      p_amount: amount,
+    });
 
-    const { error: updateError } = await supabaseClient
-      .from('clients').update({ balance: newBalance }).eq('id', foundClient.id);
-
-    if (updateError) {
-      showCashierMessage('Error al actualizar el saldo del cliente.', true);
+    if (error || !data || data.length === 0) {
+      showCashierMessage(error?.message || 'Error al aplicar el canje.', true);
       return;
     }
 
-    await supabaseClient.from('transactions').insert({
-      client_id: foundClient.id,
-      restaurant_id: currentCashier.id,
-      type: 'redeem',
-      amount,
-      cashback_generated: 0,
-    });
-
-    foundClient.balance = newBalance;
-    document.getElementById('found-client-balance').textContent = '$' + newBalance.toFixed(2);
+    const { new_balance, new_commission_owed } = data[0];
+    foundClient.balance = new_balance;
+    document.getElementById('found-client-balance').textContent = '$' + Number(new_balance).toFixed(2);
     document.getElementById('input-redeem-amount').value = '';
-    showCashierMessage('Canje aplicado. Nuevo saldo: $' + newBalance.toFixed(2), false);
+    updateCommissionDisplay(new_commission_owed);
+    showCashierMessage('Canje aplicado. Nuevo saldo: $' + Number(new_balance).toFixed(2), false);
   }
 
   // ========== DUEÑO ==========
