@@ -349,6 +349,7 @@
         <p class="text-xs font-bold text-muted text-center">Escanea el QR del cliente</p>
         <div id="qr-reader" class="rounded-2xl overflow-hidden surface-muted"></div>
         <button onclick="startScanner()" id="btn-start-scan" class="btn btn-primary w-full">Iniciar cámara</button>
+        <p id="scan-error" hidden class="text-xs font-semibold text-center text-danger"></p>
         <div class="pt-3 border-t space-y-2" style="border-color: var(--color-border);">
           <label class="field-label" for="input-manual-code">¿Sin cámara? Pega el código del cliente</label>
           <div class="flex gap-2">
@@ -970,9 +971,12 @@
     document.getElementById('input-redeem-amount').value = '';
     document.getElementById('input-manual-code').value = '';
     document.getElementById('cashier-op-message').hidden = true;
+    document.getElementById('scan-error').hidden = true;
   }
 
   function startScanner() {
+    const errorEl = document.getElementById('scan-error');
+    errorEl.hidden = true;
     document.getElementById('btn-start-scan').hidden = true;
     html5QrCode = new Html5Qrcode('qr-reader');
     html5QrCode.start(
@@ -982,7 +986,8 @@
       () => {}
     ).catch(err => {
       console.error(err);
-      alert('No se pudo acceder a la cámara. Usa el campo de código manual.');
+      errorEl.textContent = 'No se pudo acceder a la cámara (revisa los permisos del navegador). Usa el campo de código manual.';
+      errorEl.hidden = false;
       document.getElementById('btn-start-scan').hidden = false;
     });
   }
@@ -1008,10 +1013,13 @@
       .from('clients').select('*').eq('id', decodedText.trim()).maybeSingle();
 
     if (error || !client) {
-      alert('Cliente no encontrado. Verifica el código e intenta de nuevo.');
+      const errorEl = document.getElementById('scan-error');
+      errorEl.textContent = 'Cliente no encontrado. Verifica el código e intenta de nuevo.';
+      errorEl.hidden = false;
       return;
     }
 
+    document.getElementById('scan-error').hidden = true;
     const { data: hasCard } = await supabaseClient.rpc('has_payment_method', { p_client_id: client.id });
 
     foundClient = client;
