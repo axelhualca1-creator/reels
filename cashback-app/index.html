@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tu Dinero De Vuelta</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d9467">
+<link rel="apple-touch-icon" href="icon-cliente-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tu Dinero De Vuelta">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- PayPal: reemplaza el client-id por el tuyo de developer.paypal.com si cambias de app -->
+<script src="https://www.paypal.com/sdk/js?client-id=BAA03IOd9Xcsamq6exsJjgNaEKJlIQB2xjYohWAnJ2qeoAYSJ6DXO57o37-GLumYgAVdAVEn5_ElPiU-y4&components=card-fields,buttons&currency=USD"></script>
+<style>
+  :root {
+    --color-bg: #eef3f1; --color-surface: #ffffff; --color-surface-muted: #eef1ef;
+    --color-border: #dbe4e0; --color-text: #16211c; --color-text-muted: #5b6b64;
+    --color-accent: #0d9467; --color-accent-strong: #086b4c; --color-accent-soft: #e3f7ee;
+    --color-warn: #c8842a; --color-danger: #c8435b;
+    --color-dark: #1c2620; --color-dark-ink: #eef3f0;
+    --color-admin: #5844c9; --color-admin-strong: #4433a3; --color-admin-soft: #eeeafd;
+    --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --color-bg: #0b1210; --color-surface: #121b17; --color-surface-muted: #17221d;
+      --color-border: #263229; --color-text: #eef3f0; --color-text-muted: #93a49b;
+      --color-accent: #35d399; --color-accent-strong: #6eeab4; --color-accent-soft: rgba(53,211,153,0.14);
+      --color-warn: #e0a952; --color-danger: #ef6b81;
+      --color-dark: #e9efec; --color-dark-ink: #12201a;
+      --color-admin: #a99bff; --color-admin-strong: #c3b8ff; --color-admin-soft: rgba(169,155,255,.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-bg: #0b1210; --color-surface: #121b17; --color-surface-muted: #17221d;
+    --color-border: #263229; --color-text: #eef3f0; --color-text-muted: #93a49b;
+    --color-accent: #35d399; --color-accent-strong: #6eeab4; --color-accent-soft: rgba(53,211,153,0.14);
+    --color-warn: #e0a952; --color-danger: #ef6b81;
+    --color-dark: #e9efec; --color-dark-ink: #12201a;
+    --color-admin: #a99bff; --color-admin-strong: #c3b8ff; --color-admin-soft: rgba(169,155,255,.14);
+  }
+  body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+  h1, h2, .font-display { font-family: var(--font-display); }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .app-card { background: var(--color-surface); border: 1px solid var(--color-border); }
+  .surface-muted { background: var(--color-surface-muted); border: 1px solid var(--color-border); }
+  .text-muted { color: var(--color-text-muted); }
+  .text-accent { color: var(--color-accent-strong); }
+  .text-admin { color: var(--color-admin-strong); }
+  .text-danger { color: var(--color-danger); }
+  .text-warn { color: var(--color-warn); }
+  .btn { font-family: var(--font-body); font-weight: 700; border-radius: 0.9rem; padding: 0.85rem 1rem; cursor: pointer; border: none; }
+  .btn-primary { background: var(--color-accent); color: #fff; }
+  .btn-primary:hover { background: var(--color-accent-strong); }
+  .btn-dark { background: var(--color-dark); color: var(--color-dark-ink); }
+  .btn-dark:hover { opacity: .9; }
+  .btn-admin { background: var(--color-admin); color: #fff; }
+  .btn-admin:hover { background: var(--color-admin-strong); }
+  .btn-warn { background: var(--color-warn); color: #2a1c05; }
+  .btn-ghost { background: transparent; color: var(--color-text-muted); text-decoration: underline; font-weight: 600; padding: 0; }
+  .btn-link-danger { background: transparent; color: var(--color-danger); font-weight: 700; padding: 0; }
+  .field { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 0.9rem; padding: 0.85rem 1rem; width: 100%; font-family: var(--font-body); }
+  .field:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .card-field { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 0.7rem; padding: 0.7rem 0.85rem; }
+  .tab-btn { flex: 1; padding: 0.55rem 0; border-radius: 0.7rem; font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted); background: transparent; border: none; cursor: pointer; }
+  .tab-btn.active { background: var(--color-surface); color: var(--color-text); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .tab-row { background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 0.9rem; padding: 0.25rem; }
+  .stat-tile { background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 0.9rem; padding: 0.9rem; }
+  .row-item { background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 0.9rem; padding: 0.7rem 0.9rem; }
+  .pill { border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.62rem; font-weight: 700; }
+  label.field-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
+  #qr-reader video { border-radius: 0.9rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="app" class="w-full max-w-md app-card rounded-[28px] shadow-xl overflow-hidden p-6">
+
+    <!-- ========== CLIENTE ========== -->
+
+    <!-- PANTALLA: INICIO CLIENTE (elegir Ingresar / Registrarse) -->
+    <div id="view-auth" class="space-y-6">
+      <div class="text-center space-y-1">
+        <h1 class="text-3xl font-extrabold text-accent">Tu Dinero De Vuelta</h1>
+        <p class="text-xs font-bold uppercase tracking-wide text-muted">Cashback Red</p>
+        <p class="text-sm text-muted pt-1">Gana 5% inmediato en tus restaurantes favoritos</p>
+      </div>
+      <div class="space-y-3">
+        <button onclick="switchView('login')" class="btn btn-primary w-full">Ingresar</button>
+        <button onclick="switchView('register')" class="btn btn-dark w-full">Registrarse</button>
+        <div class="pt-4 border-t text-center space-y-2" style="border-color: var(--color-border);">
+          <button onclick="switchView('restaurant-access')" class="btn-ghost text-xs block w-full">¿Eres cajero o restaurante? Ingresa aquí</button>
+          <button onclick="switchView('owner-login')" class="btn-ghost text-xs block w-full">¿Eres el administrador de la red? Panel de administración</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: INGRESAR (ya tiene cuenta) -->
+    <div id="view-login" class="space-y-6" hidden>
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Ingresar</h1>
+        <p class="text-sm text-muted">Escribe el número con el que te registraste</p>
+      </div>
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-login-phone">Número de celular</label>
+          <input type="tel" id="input-login-phone" placeholder="Ej: 0991234567" class="field text-lg tabular">
+        </div>
+        <button onclick="handleLogin()" id="btn-send-login-otp" class="btn btn-primary w-full">Enviar código por WhatsApp</button>
+        <p id="login-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <div class="pt-2 text-center">
+          <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: VERIFICAR CÓDIGO DE WHATSAPP -->
+    <div id="view-login-otp" class="space-y-6" hidden>
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Verifica tu número</h1>
+        <p class="text-sm text-muted">Te enviamos un código de 6 dígitos por WhatsApp al <span id="otp-phone-display" class="font-bold"></span></p>
+      </div>
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-otp-code">Código de verificación</label>
+          <input type="tel" id="input-otp-code" maxlength="6" placeholder="000000" class="field text-2xl tabular text-center" style="letter-spacing: 0.3em;">
+        </div>
+        <button onclick="handleVerifyLoginOtp()" class="btn btn-primary w-full">Verificar</button>
+        <p id="otp-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <div class="pt-2 text-center space-y-1">
+          <button onclick="resendLoginOtp()" class="btn-ghost text-xs block w-full">Reenviar código</button>
+          <button onclick="switchView('login')" class="btn-ghost text-xs">← Cambiar número</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: REGISTRARSE (cuenta nueva) -->
+    <div id="view-register" class="space-y-6" hidden>
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Crear cuenta</h1>
+        <p class="text-sm text-muted">Necesitamos estos datos para tu cuenta de cashback</p>
+      </div>
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-register-phone">Número de celular</label>
+          <input type="tel" id="input-register-phone" placeholder="Ej: 0991234567" class="field text-lg tabular">
+        </div>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-register-email">Correo de Gmail</label>
+          <input type="email" id="input-register-email" placeholder="tunombre@gmail.com" class="field">
+        </div>
+        <button onclick="handleRegisterClient()" class="btn btn-primary w-full">Continuar</button>
+        <p id="register-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <div class="pt-2 text-center">
+          <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: AGREGAR MÉTODO DE PAGO (obligatorio antes del dashboard) -->
+    <div id="view-add-card" hidden class="space-y-5">
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Agrega tu método de pago</h1>
+        <p class="text-xs text-muted">Lo usaremos para cobrar tus compras cuando pagues con tu QR. Nunca vemos tu número de tarjeta ni tu contraseña de PayPal: lo procesa PayPal de forma segura.</p>
+      </div>
+
+      <div class="tab-row flex text-xs">
+        <button onclick="switchPaymentMethodTab('card')" id="payment-tab-btn-card" class="tab-btn">Tarjeta</button>
+        <button onclick="switchPaymentMethodTab('paypal')" id="payment-tab-btn-paypal" class="tab-btn">Cuenta de PayPal</button>
+      </div>
+
+      <div id="payment-tab-card" class="space-y-3">
+        <div>
+          <label class="field-label">Nombre en la tarjeta</label>
+          <div id="card-holder-name" class="card-field mt-1"></div>
+        </div>
+        <div>
+          <label class="field-label">Número de tarjeta</label>
+          <div id="card-number-field" class="card-field mt-1"></div>
+        </div>
+        <div class="flex gap-3">
+          <div class="flex-1">
+            <label class="field-label">Vencimiento</label>
+            <div id="card-expiry-field" class="card-field mt-1"></div>
+          </div>
+          <div class="w-24">
+            <label class="field-label">CVV</label>
+            <div id="card-cvv-field" class="card-field mt-1"></div>
+          </div>
+        </div>
+        <button onclick="submitCard()" id="btn-save-card" class="btn btn-primary w-full">Guardar tarjeta y continuar</button>
+        <p id="card-eligibility-warning" hidden class="text-xs text-center text-muted">
+          Este navegador no puede mostrar el formulario de tarjeta de PayPal.
+        </p>
+      </div>
+
+      <div id="payment-tab-paypal" hidden class="space-y-3 text-center">
+        <p class="text-xs text-muted">Se abrirá una ventana de PayPal para que apruebes vincular tu cuenta. No compartes tu contraseña con nosotros.</p>
+        <div id="paypal-button-container" class="mt-2"></div>
+      </div>
+
+      <p id="card-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+    </div>
+
+    <!-- PANTALLA: DASHBOARD CLIENTE -->
+    <div id="view-client" hidden class="space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b" style="border-color: var(--color-border);">
+        <div class="text-left">
+          <span class="text-[11px] font-bold uppercase tracking-wide text-muted">Mi cuenta</span>
+          <p id="client-phone-display" class="text-sm font-bold font-display"></p>
+        </div>
+        <button onclick="logout()" class="btn-link-danger text-xs">Salir</button>
+      </div>
+
+      <div class="tab-row flex text-xs">
+        <button onclick="switchClientTab('resumen')" id="tab-btn-resumen" class="tab-btn">Resumen</button>
+        <button onclick="switchClientTab('locales')" id="tab-btn-locales" class="tab-btn">Locales</button>
+        <button onclick="switchClientTab('historial')" id="tab-btn-historial" class="tab-btn">Historial</button>
+        <button onclick="switchClientTab('qr')" id="tab-btn-qr" class="tab-btn">Mi QR</button>
+      </div>
+
+      <div id="client-tab-resumen" class="space-y-3 text-center">
+        <div class="rounded-2xl p-6" style="background: var(--color-accent-soft);">
+          <p class="text-xs font-bold uppercase tracking-wide text-accent">Tu cashback disponible</p>
+          <h2 id="client-balance" class="text-4xl font-extrabold font-display tabular mt-2" style="color: var(--color-accent-strong);">$0.00</h2>
+          <p class="text-[11px] mt-1 text-accent" style="opacity:.85;">Mínimo $3.00 para usar en la red</p>
+        </div>
+        <p class="text-xs text-muted">Método de pago: <span id="card-status-display" class="font-bold"></span></p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Cashback ganado</p><p id="stat-total-earned" class="text-lg font-bold font-display tabular mt-1">$0.00</p></div>
+          <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Total gastado</p><p id="stat-total-spent" class="text-lg font-bold font-display tabular mt-1">$0.00</p></div>
+          <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Compras</p><p id="stat-purchase-count" class="text-lg font-bold font-display tabular mt-1">0</p></div>
+          <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Canjeado</p><p id="stat-total-redeemed" class="text-lg font-bold font-display tabular mt-1">$0.00</p></div>
+        </div>
+      </div>
+
+      <div id="client-tab-locales" hidden class="space-y-2" style="max-height:20rem; overflow-y:auto;">
+        <div id="client-locales-list" class="space-y-2"></div>
+        <p id="client-locales-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay locales afiliados.</p>
+      </div>
+
+      <div id="client-tab-historial" hidden class="space-y-2" style="max-height:20rem; overflow-y:auto;">
+        <div id="client-history-list" class="space-y-2"></div>
+        <p id="client-history-empty" hidden class="text-xs text-muted text-center py-6">Todavía no tienes compras registradas.</p>
+      </div>
+
+      <div id="client-tab-qr" hidden class="space-y-2 text-center">
+        <p class="text-xs font-bold text-muted">Muestra este QR al cajero al pagar</p>
+        <div class="flex justify-center p-4 rounded-2xl surface-muted" style="display:inline-flex;">
+          <div id="qrcode"></div>
+        </div>
+        <p id="client-id-display" class="text-xs font-mono text-muted"></p>
+      </div>
+    </div>
+
+    <!-- ========== RESTAURANTE ========== -->
+
+    <!-- PANTALLA: ACCESO RESTAURANTE (login / registro) -->
+    <div id="view-restaurant-access" hidden class="space-y-5">
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Cashback Red · Comercios</h1>
+        <p class="text-xs text-muted">Escanea, cobra y da cashback a tus clientes</p>
+      </div>
+
+      <div class="tab-row flex text-xs">
+        <button onclick="switchAccessTab('login')" id="access-tab-btn-login" class="tab-btn">Iniciar sesión</button>
+        <button onclick="switchAccessTab('signup')" id="access-tab-btn-signup" class="tab-btn">Registrar restaurante</button>
+      </div>
+
+      <div id="access-tab-login" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-restaurant-code">Código de restaurante</label>
+          <input type="text" id="input-restaurant-code" placeholder="Ej: A1B2C3" class="field uppercase">
+        </div>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-cashier-pin">PIN</label>
+          <input type="password" id="input-cashier-pin" placeholder="••••••" maxlength="6" class="field">
+        </div>
+        <p id="restaurant-login-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <button onclick="handleCashierLogin()" class="btn btn-dark w-full">Ingresar</button>
+      </div>
+
+      <div id="access-tab-signup" hidden class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-new-name">Nombre del restaurante</label>
+          <input type="text" id="input-new-name" placeholder="Ej: Sabor Andino Grill" class="field">
+        </div>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-new-category">Categoría (opcional)</label>
+          <input type="text" id="input-new-category" placeholder="Ej: Parrilla, Mariscos, Pizzería" class="field">
+        </div>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-new-description">Descripción corta (opcional)</label>
+          <input type="text" id="input-new-description" placeholder="Ej: Carnes a la parrilla y platos típicos" class="field">
+        </div>
+        <p class="text-[11px] text-muted">Te generaremos un código y un PIN automáticamente. Los verás una sola vez: guárdalos.</p>
+        <p id="signup-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <button onclick="handleRegisterRestaurant()" class="btn btn-primary w-full">Crear cuenta de restaurante</button>
+      </div>
+
+      <div class="pt-2 border-t text-center" style="border-color: var(--color-border);">
+        <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver a inicio de cliente</button>
+      </div>
+    </div>
+
+    <!-- PANTALLA: CREDENCIALES GENERADAS -->
+    <div id="view-credentials" hidden class="space-y-5 text-center">
+      <div class="space-y-1">
+        <h1 class="text-xl font-extrabold font-display">¡Cuenta creada!</h1>
+        <p class="text-xs text-muted">Guarda estos datos: los necesitas para iniciar sesión cada vez. No se muestran de nuevo.</p>
+      </div>
+      <div class="surface-muted rounded-2xl p-5 space-y-3">
+        <div>
+          <p class="text-[10px] font-bold uppercase text-muted">Código de restaurante</p>
+          <p id="issued-code" class="text-2xl font-extrabold font-display tabular"></p>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold uppercase text-muted">PIN</p>
+          <p id="issued-pin" class="text-2xl font-extrabold font-display tabular"></p>
+        </div>
+      </div>
+      <button onclick="continueToPos()" class="btn btn-primary w-full">Ya lo guardé, continuar</button>
+    </div>
+
+    <!-- PANTALLA: PUNTO DE VENTA -->
+    <div id="view-pos" hidden class="space-y-5">
+      <div class="flex justify-between items-center pb-3 border-b" style="border-color: var(--color-border);">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wide text-muted">Comercio</span>
+          <p id="cashier-restaurant-name" class="text-sm font-bold font-display"></p>
+        </div>
+        <button onclick="logoutCashier()" class="btn-link-danger text-xs">Salir</button>
+      </div>
+
+      <div class="rounded-2xl p-3 text-center surface-muted">
+        <p class="text-[10px] font-bold uppercase text-muted">Deuda con la red (10% semanal)</p>
+        <p id="cashier-commission-owed" class="text-lg font-bold font-display tabular mt-0.5">$0.00</p>
+      </div>
+
+      <div id="cashier-step-scan" class="space-y-3">
+        <p class="text-xs font-bold text-muted text-center">Escanea el QR del cliente</p>
+        <div id="qr-reader" class="rounded-2xl overflow-hidden surface-muted"></div>
+        <button onclick="startScanner()" id="btn-start-scan" class="btn btn-primary w-full">Iniciar cámara</button>
+        <div class="pt-3 border-t space-y-2" style="border-color: var(--color-border);">
+          <label class="field-label" for="input-manual-code">¿Sin cámara? Pega el código del cliente</label>
+          <div class="flex gap-2">
+            <input type="text" id="input-manual-code" placeholder="ID del cliente" class="field text-xs font-mono">
+            <button onclick="lookupClientManual()" class="btn btn-dark" style="padding-inline:1.1rem;">Buscar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="cashier-step-client" hidden class="space-y-4">
+        <div class="rounded-2xl p-4 text-center surface-muted">
+          <p class="text-[11px] font-bold uppercase text-muted">Cliente</p>
+          <p id="found-client-phone" class="text-lg font-bold font-display tabular"></p>
+          <p class="text-xs text-muted mt-1">Saldo cashback: <span id="found-client-balance" class="font-bold tabular text-accent"></span></p>
+          <p class="text-xs text-muted">Tarjeta: <span id="found-client-card" class="font-bold"></span></p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="field-label" for="input-purchase-amount">Monto de la compra ($)</label>
+          <input type="number" id="input-purchase-amount" min="0" step="0.01" placeholder="0.00" class="field text-lg tabular">
+          <button onclick="registerPurchase()" id="btn-charge" class="btn btn-primary w-full">Cobrar con tarjeta (+5% cashback)</button>
+        </div>
+
+        <div class="space-y-2 pt-2 border-t" style="border-color: var(--color-border);">
+          <label class="field-label" for="input-redeem-amount">Canjear cashback ($)</label>
+          <input type="number" id="input-redeem-amount" min="0" step="0.01" placeholder="0.00" class="field text-lg tabular">
+          <button onclick="redeemCashback()" class="btn btn-warn w-full">Canjear saldo del cliente</button>
+        </div>
+
+        <p id="cashier-op-message" hidden class="text-xs font-semibold text-center"></p>
+        <button onclick="resetCashierScan()" class="btn-ghost text-xs w-full text-center">Escanear otro cliente</button>
+      </div>
+    </div>
+
+    <!-- ========== DUEÑO ========== -->
+
+    <!-- PANTALLA: LOGIN DUEÑO -->
+    <div id="view-owner-login" hidden class="space-y-6">
+      <div class="text-center space-y-1">
+        <h1 class="text-xl font-extrabold font-display">Panel de administración</h1>
+        <p class="text-xs text-muted">Visibilidad total de la red: clientes, restaurantes y movimientos</p>
+      </div>
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-owner-username">Usuario</label>
+          <input type="text" id="input-owner-username" placeholder="admin" class="field">
+        </div>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-owner-password">Contraseña</label>
+          <input type="password" id="input-owner-password" placeholder="••••••••" class="field">
+        </div>
+        <p id="owner-login-error" hidden class="text-xs font-semibold text-center text-danger"></p>
+        <button onclick="handleOwnerLogin()" class="btn btn-admin w-full">Ingresar</button>
+        <div class="pt-4 border-t text-center" style="border-color: var(--color-border);">
+          <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver a inicio de cliente</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA: DASHBOARD DUEÑO -->
+    <div id="view-owner-dashboard" hidden class="space-y-5">
+      <div class="flex justify-between items-center pb-3 border-b" style="border-color: var(--color-border);">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wide text-muted">Administración</span>
+          <p class="text-sm font-bold font-display">Toda la red</p>
+        </div>
+        <button onclick="logoutOwner()" class="btn-link-danger text-xs">Salir</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Clientes registrados</p><p id="owner-stat-clients" class="text-lg font-bold font-display tabular mt-1">0</p></div>
+        <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Restaurantes activos</p><p id="owner-stat-restaurants" class="text-lg font-bold font-display tabular mt-1">0</p></div>
+        <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-accent">Ventas totales</p><p id="owner-stat-sales" class="text-lg font-bold font-display tabular mt-1 text-accent">$0.00</p></div>
+        <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-warn">Cashback en circulación</p><p id="owner-stat-circulating" class="text-lg font-bold font-display tabular mt-1 text-warn">$0.00</p></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-center text-[11px] text-muted">
+        <p>Emitido: <span id="owner-stat-earned" class="font-bold tabular">$0.00</span></p>
+        <p>Canjeado: <span id="owner-stat-redeemed" class="font-bold tabular">$0.00</span></p>
+      </div>
+
+      <div class="tab-row flex text-xs">
+        <button onclick="switchOwnerTab('restaurantes')" id="owner-tab-btn-restaurantes" class="tab-btn">Restaurantes</button>
+        <button onclick="switchOwnerTab('actividad')" id="owner-tab-btn-actividad" class="tab-btn">Actividad</button>
+        <button onclick="switchOwnerTab('clientes')" id="owner-tab-btn-clientes" class="tab-btn">Clientes</button>
+      </div>
+
+      <div id="owner-tab-restaurantes" class="space-y-2" style="max-height:18rem; overflow-y:auto;">
+        <div id="owner-restaurant-list" class="space-y-2"></div>
+        <p id="owner-restaurant-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay restaurantes registrados.</p>
+      </div>
+
+      <div id="owner-tab-actividad" hidden class="space-y-2" style="max-height:18rem; overflow-y:auto;">
+        <div id="owner-activity-list" class="space-y-2"></div>
+        <p id="owner-activity-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay movimientos registrados.</p>
+      </div>
+
+      <div id="owner-tab-clientes" hidden class="space-y-2" style="max-height:18rem; overflow-y:auto;">
+        <div id="owner-client-list" class="space-y-2"></div>
+        <p id="owner-client-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay clientes registrados.</p>
+      </div>
+    </div>
+
+    <!-- PANTALLA: DETALLE DE RESTAURANTE (actividad + cobrar deuda) -->
+    <div id="view-owner-restaurant-detail" hidden class="space-y-5">
+      <div class="flex justify-between items-center pb-3 border-b" style="border-color: var(--color-border);">
+        <div>
+          <button onclick="switchView('owner-dashboard')" class="btn-ghost text-xs">← Volver</button>
+          <p id="restaurant-detail-name" class="text-sm font-bold font-display mt-1"></p>
+          <p id="restaurant-detail-code" class="text-[10px] font-mono text-muted"></p>
+        </div>
+      </div>
+
+      <div class="rounded-2xl p-4 text-center" style="background: var(--color-warn); background: color-mix(in srgb, var(--color-warn) 16%, var(--color-surface));">
+        <p class="text-[10px] font-bold uppercase text-warn">Deuda con la red (10% semanal)</p>
+        <p id="restaurant-detail-commission" class="text-3xl font-extrabold font-display tabular mt-1 text-warn">$0.00</p>
+        <button onclick="settleCommissionFromDetail()" id="btn-settle-commission" class="btn btn-warn w-full mt-3">Cobrar deuda</button>
+      </div>
+
+      <label class="flex items-center gap-1.5 text-xs font-semibold text-muted">
+        <input type="checkbox" id="restaurant-detail-featured" onchange="toggleFeatured(currentDetailRestaurantId, this.checked)">
+        Destacado en "Locales" del cliente
+      </label>
+
+      <div>
+        <p class="text-xs font-bold text-muted mb-2">Actividad de este restaurante</p>
+        <div id="restaurant-detail-activity-list" class="space-y-2" style="max-height:18rem; overflow-y:auto;"></div>
+        <p id="restaurant-detail-activity-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay movimientos de este restaurante.</p>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const SUPABASE_URL = 'https://eelbrcwsadibdudbutar.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlbGJyY3dzYWRpYmR1ZGJ1dGFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0ODA4MDAsImV4cCI6MjEwNTA1NjgwMH0.Mb1eb4U-E-kNSZkxYvDESGDViT1PVHfIc2A9JRTslTE';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const FUNCTIONS_BASE = SUPABASE_URL + '/functions/v1';
+
+  const MIN_REDEEM_BALANCE = 3;
+
+  let currentClient = null;
+  let currentCashier = null;
+  let foundClient = null;
+  let html5QrCode = null;
+  let cardFields = null;
+  let currentSetupTokenId = null;
+  let ownerClients = [];
+  let ownerRestaurants = [];
+  let ownerTransactions = [];
+  let currentDetailRestaurantId = null;
+  let pendingLogin = null;
+
+  function switchView(name) {
+    document.querySelectorAll('#app > div[id^="view-"]').forEach(el => el.hidden = true);
+    document.getElementById('view-' + name).hidden = false;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function callFunction(name, payload) {
+    const res = await fetch(`${FUNCTIONS_BASE}/${name}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error de red');
+    return data;
+  }
+
+  // ========== CLIENTE ==========
+
+  let pendingLoginPhone = null;
+
+  async function handleLogin() {
+    const phone = document.getElementById('input-login-phone').value.trim();
+    const errorEl = document.getElementById('login-error');
+    errorEl.hidden = true;
+
+    if (!/^0\d{9}$/.test(phone)) {
+      errorEl.textContent = 'Ingresa un número de celular válido (10 dígitos, ej: 0991234567)';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const btn = document.getElementById('btn-send-login-otp');
+    btn.disabled = true;
+    btn.textContent = 'Enviando código…';
+
+    try {
+      await callFunction('send-login-otp', { phone });
+      pendingLoginPhone = phone;
+      document.getElementById('otp-phone-display').textContent = phone;
+      document.getElementById('input-otp-code').value = '';
+      document.getElementById('otp-error').hidden = true;
+      switchView('login-otp');
+    } catch (err) {
+      errorEl.textContent = err.message || 'No se pudo enviar el código. Intenta de nuevo.';
+      errorEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar código por WhatsApp';
+    }
+  }
+
+  async function handleVerifyLoginOtp() {
+    const code = document.getElementById('input-otp-code').value.trim();
+    const errorEl = document.getElementById('otp-error');
+    errorEl.hidden = true;
+
+    if (!code) {
+      errorEl.textContent = 'Ingresa el código que te llegó por WhatsApp.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    try {
+      const result = await callFunction('verify-login-otp', { phone: pendingLoginPhone, code });
+      currentClient = result.client;
+      goToDashboardOrPaymentSetup();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Código incorrecto.';
+      errorEl.hidden = false;
+    }
+  }
+
+  async function resendLoginOtp() {
+    if (!pendingLoginPhone) return;
+    const errorEl = document.getElementById('otp-error');
+    errorEl.hidden = true;
+    try {
+      await callFunction('send-login-otp', { phone: pendingLoginPhone });
+      errorEl.className = 'text-xs font-semibold text-center text-accent';
+      errorEl.textContent = 'Te enviamos un nuevo código.';
+      errorEl.hidden = false;
+    } catch (err) {
+      errorEl.className = 'text-xs font-semibold text-center text-danger';
+      errorEl.textContent = err.message || 'No se pudo reenviar el código.';
+      errorEl.hidden = false;
+    }
+  }
+
+  async function handleRegisterClient() {
+    const phone = document.getElementById('input-register-phone').value.trim();
+    const email = document.getElementById('input-register-email').value.trim();
+    const errorEl = document.getElementById('register-error');
+    errorEl.hidden = true;
+
+    if (!/^0\d{9}$/.test(phone)) {
+      errorEl.textContent = 'Ingresa un número de celular válido (10 dígitos, ej: 0991234567)';
+      errorEl.hidden = false;
+      return;
+    }
+    if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+      errorEl.textContent = 'Ingresa un correo de Gmail válido (ej: tunombre@gmail.com)';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const { data: existing } = await supabaseClient
+      .from('clients').select('id').eq('phone', phone).maybeSingle();
+
+    if (existing) {
+      errorEl.textContent = 'Ya existe una cuenta con ese número. Usa "Ingresar".';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const { data: newClient, error: insertError } = await supabaseClient
+      .from('clients').insert({ phone, email, balance: 0 }).select().single();
+
+    if (insertError) {
+      errorEl.textContent = 'No se pudo crear la cuenta. Intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    currentClient = newClient;
+    switchView('add-card');
+    switchPaymentMethodTab('card');
+  }
+
+  function goToDashboardOrPaymentSetup() {
+    supabaseClient.rpc('has_payment_method', { p_client_id: currentClient.id }).then(({ data: hasMethod }) => {
+      if (!hasMethod) {
+        switchView('add-card');
+        switchPaymentMethodTab('card');
+      } else {
+        switchView('client');
+        switchClientTab('resumen');
+        loadClientDashboard();
+      }
+    });
+  }
+
+  function logout() {
+    currentClient = null;
+    document.getElementById('input-login-phone').value = '';
+    document.getElementById('input-register-phone').value = '';
+    document.getElementById('input-register-email').value = '';
+    switchView('auth');
+  }
+
+  let cardFieldsInitialized = false;
+  let paypalButtonInitialized = false;
+
+  function switchPaymentMethodTab(tab) {
+    ['card', 'paypal'].forEach(t => {
+      const isActive = t === tab;
+      document.getElementById('payment-tab-' + t).hidden = !isActive;
+      document.getElementById('payment-tab-btn-' + t).classList.toggle('active', isActive);
+    });
+    document.getElementById('card-error').hidden = true;
+
+    if (tab === 'card' && !cardFieldsInitialized) {
+      cardFieldsInitialized = true;
+      initCardFields();
+    }
+    if (tab === 'paypal' && !paypalButtonInitialized) {
+      paypalButtonInitialized = true;
+      initPayPalButton();
+    }
+  }
+
+  async function completePaymentSetup(setupTokenId) {
+    await callFunction('paypal-save-payment-token', {
+      clientId: currentClient.id,
+      setupTokenId,
+    });
+    switchView('client');
+    switchClientTab('resumen');
+    loadClientDashboard();
+  }
+
+  async function initCardFields() {
+    const errorEl = document.getElementById('card-error');
+    errorEl.hidden = true;
+
+    try {
+      const { setupTokenId } = await callFunction('paypal-create-setup-token', { clientId: currentClient.id, method: 'card' });
+      currentSetupTokenId = setupTokenId;
+
+      cardFields = paypal.CardFields({
+        createVaultSetupToken: () => Promise.resolve(currentSetupTokenId),
+        onApprove: (data) => completePaymentSetup(data.vaultSetupToken),
+        onError: (err) => {
+          console.error(err);
+          errorEl.textContent = 'La tarjeta fue rechazada o los datos son incorrectos.';
+          errorEl.hidden = false;
+        },
+      });
+
+      if (cardFields.isEligible()) {
+        cardFields.NameField().render('#card-holder-name');
+        cardFields.NumberField().render('#card-number-field');
+        cardFields.ExpiryField().render('#card-expiry-field');
+        cardFields.CVVField().render('#card-cvv-field');
+      } else {
+        document.getElementById('card-eligibility-warning').hidden = false;
+        document.getElementById('btn-save-card').hidden = true;
+      }
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = 'No se pudo iniciar el formulario de tarjeta.';
+      errorEl.hidden = false;
+    }
+  }
+
+  function submitCard() {
+    if (!cardFields) return;
+    const errorEl = document.getElementById('card-error');
+    errorEl.hidden = true;
+    cardFields.submit().catch((err) => {
+      console.error(err);
+      errorEl.textContent = 'No se pudo guardar la tarjeta. Revisa los datos e intenta de nuevo.';
+      errorEl.hidden = false;
+    });
+  }
+
+  function initPayPalButton() {
+    const errorEl = document.getElementById('card-error');
+    errorEl.hidden = true;
+
+    paypal.Buttons({
+      fundingSource: paypal.FUNDING.PAYPAL,
+      style: { label: 'pay', height: 45 },
+      createVaultSetupToken: async () => {
+        const { setupTokenId } = await callFunction('paypal-create-setup-token', { clientId: currentClient.id, method: 'paypal' });
+        return setupTokenId;
+      },
+      onApprove: ({ vaultSetupToken }) => completePaymentSetup(vaultSetupToken),
+      onError: (err) => {
+        console.error(err);
+        errorEl.textContent = 'No se pudo vincular tu cuenta de PayPal. Intenta de nuevo.';
+        errorEl.hidden = false;
+      },
+    }).render('#paypal-button-container');
+  }
+
+  function switchClientTab(tab) {
+    ['resumen', 'locales', 'historial', 'qr'].forEach(t => {
+      const isActive = t === tab;
+      document.getElementById('client-tab-' + t).hidden = !isActive;
+      document.getElementById('tab-btn-' + t).classList.toggle('active', isActive);
+    });
+    if (tab === 'locales') loadLocales();
+  }
+
+  async function loadLocales() {
+    const { data: restaurants, error } = await supabaseClient
+      .from('restaurant_public')
+      .select('id, name, description, category, is_featured');
+
+    if (error) return;
+
+    const listEl = document.getElementById('client-locales-list');
+    listEl.innerHTML = '';
+
+    restaurants
+      .slice()
+      .sort((a, b) => (b.is_featured === true) - (a.is_featured === true))
+      .forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'row-item text-left';
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-bold">${escapeHtml(r.name)}</p>
+            ${r.is_featured ? '<span class="pill" style="background: var(--color-warn); color:#2a1c05;">Promocionado</span>' : ''}
+          </div>
+          ${r.category ? `<p class="text-[11px] font-semibold text-accent mt-0.5">${escapeHtml(r.category)}</p>` : ''}
+          ${r.description ? `<p class="text-xs text-muted mt-0.5">${escapeHtml(r.description)}</p>` : ''}
+        `;
+        listEl.appendChild(row);
+      });
+
+    document.getElementById('client-locales-empty').hidden = restaurants.length > 0;
+  }
+
+  async function fetchRestaurantNames(restaurantIds) {
+    const uniqueIds = [...new Set(restaurantIds.filter(Boolean))];
+    if (uniqueIds.length === 0) return {};
+    const { data, error } = await supabaseClient
+      .from('restaurant_public').select('id, name').in('id', uniqueIds);
+    if (error) return {};
+    const map = {};
+    data.forEach(r => { map[r.id] = r.name; });
+    return map;
+  }
+
+  async function loadClientDashboard() {
+    document.getElementById('client-phone-display').textContent = currentClient.phone;
+    document.getElementById('client-balance').textContent = '$' + Number(currentClient.balance).toFixed(2);
+    document.getElementById('client-id-display').textContent = currentClient.id;
+
+    document.getElementById('qrcode').innerHTML = '';
+    new QRCode(document.getElementById('qrcode'), { text: currentClient.id, width: 180, height: 180 });
+
+    const { data: methodRows } = await supabaseClient.rpc('get_payment_method_summary', { p_client_id: currentClient.id });
+    const method = methodRows && methodRows[0];
+    document.getElementById('card-status-display').textContent = method
+      ? (method.method_type === 'paypal'
+          ? 'PayPal · ' + (method.paypal_email || 'vinculado')
+          : 'Tarjeta · •••• ' + (method.card_last4 || '----'))
+      : 'No agregado';
+
+    const { data: transactions, error } = await supabaseClient
+      .from('transactions').select('*').eq('client_id', currentClient.id).order('created_at', { ascending: false });
+
+    if (error) return;
+
+    const restaurantNames = await fetchRestaurantNames(transactions.map(tx => tx.restaurant_id));
+
+    let totalSpent = 0, totalEarned = 0, totalRedeemed = 0, purchaseCount = 0;
+    const listEl = document.getElementById('client-history-list');
+    listEl.innerHTML = '';
+
+    transactions.forEach(tx => {
+      const restaurantName = escapeHtml(restaurantNames[tx.restaurant_id] || 'Restaurante');
+      const date = new Date(tx.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      if (tx.type === 'purchase') {
+        totalSpent += Number(tx.amount);
+        totalEarned += Number(tx.cashback_generated);
+        purchaseCount++;
+      } else if (tx.type === 'redeem') {
+        totalRedeemed += Number(tx.amount);
+      }
+
+      const row = document.createElement('div');
+      row.className = 'row-item flex justify-between items-center text-left';
+      row.innerHTML = tx.type === 'purchase'
+        ? `<div><p class="text-xs font-bold">${restaurantName}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular">$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] font-bold tabular text-accent">+$${Number(tx.cashback_generated).toFixed(2)}</p></div>`
+        : `<div><p class="text-xs font-bold">${restaurantName}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular text-warn">-$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] text-muted">Canje</p></div>`;
+      listEl.appendChild(row);
+    });
+
+    document.getElementById('client-history-empty').hidden = transactions.length > 0;
+    document.getElementById('stat-total-earned').textContent = '$' + totalEarned.toFixed(2);
+    document.getElementById('stat-total-spent').textContent = '$' + totalSpent.toFixed(2);
+    document.getElementById('stat-purchase-count').textContent = purchaseCount;
+    document.getElementById('stat-total-redeemed').textContent = '$' + totalRedeemed.toFixed(2);
+  }
+
+  // ========== RESTAURANTE ==========
+
+  function switchAccessTab(tab) {
+    ['login', 'signup'].forEach(t => {
+      const isActive = t === tab;
+      document.getElementById('access-tab-' + t).hidden = !isActive;
+      document.getElementById('access-tab-btn-' + t).classList.toggle('active', isActive);
+    });
+  }
+  switchAccessTab('login');
+
+  async function handleRegisterRestaurant() {
+    const name = document.getElementById('input-new-name').value.trim();
+    const category = document.getElementById('input-new-category').value.trim();
+    const description = document.getElementById('input-new-description').value.trim();
+    const errorEl = document.getElementById('signup-error');
+    errorEl.hidden = true;
+
+    if (!name) {
+      errorEl.textContent = 'Escribe el nombre de tu restaurante.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const { data, error } = await supabaseClient.rpc('register_restaurant', {
+      p_name: name,
+      p_description: description || null,
+      p_category: category || null,
+    });
+
+    if (error || !data || data.length === 0) {
+      errorEl.textContent = 'No se pudo crear la cuenta, intenta de nuevo.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const issued = data[0];
+    document.getElementById('issued-code').textContent = issued.code;
+    document.getElementById('issued-pin').textContent = issued.pin;
+    pendingLogin = { id: issued.id, code: issued.code, pin: issued.pin, name: issued.name };
+    switchView('credentials');
+  }
+
+  function continueToPos() {
+    currentCashier = { id: pendingLogin.id, code: pendingLogin.code, pin: pendingLogin.pin, name: pendingLogin.name };
+    document.getElementById('cashier-restaurant-name').textContent = currentCashier.name;
+    updateCommissionDisplay(0);
+    switchView('pos');
+    resetCashierScan();
+  }
+
+  function updateCommissionDisplay(value) {
+    document.getElementById('cashier-commission-owed').textContent = '$' + Number(value).toFixed(2);
+  }
+
+  async function handleCashierLogin() {
+    const code = document.getElementById('input-restaurant-code').value.trim().toUpperCase();
+    const pin = document.getElementById('input-cashier-pin').value.trim();
+    const errorEl = document.getElementById('restaurant-login-error');
+    errorEl.hidden = true;
+
+    const { data, error } = await supabaseClient.rpc('verify_restaurant_login', { p_code: code, p_pin: pin });
+
+    if (error) {
+      errorEl.textContent = 'Error al conectar con la base de datos.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const restaurant = data && data[0];
+    if (!restaurant) {
+      errorEl.textContent = 'Código o PIN incorrectos.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    currentCashier = { id: restaurant.id, code: restaurant.code, pin, name: restaurant.name };
+    document.getElementById('cashier-restaurant-name').textContent = restaurant.name;
+    updateCommissionDisplay(restaurant.commission_owed);
+    switchView('pos');
+    resetCashierScan();
+  }
+
+  function logoutCashier() {
+    stopScanner();
+    currentCashier = null;
+    document.getElementById('input-restaurant-code').value = '';
+    document.getElementById('input-cashier-pin').value = '';
+    switchView('restaurant-access');
+    switchAccessTab('login');
+  }
+
+  function resetCashierScan() {
+    foundClient = null;
+    document.getElementById('cashier-step-client').hidden = true;
+    document.getElementById('cashier-step-scan').hidden = false;
+    document.getElementById('input-purchase-amount').value = '';
+    document.getElementById('input-redeem-amount').value = '';
+    document.getElementById('input-manual-code').value = '';
+    document.getElementById('cashier-op-message').hidden = true;
+  }
+
+  function startScanner() {
+    document.getElementById('btn-start-scan').hidden = true;
+    html5QrCode = new Html5Qrcode('qr-reader');
+    html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 220 },
+      onScanSuccess,
+      () => {}
+    ).catch(err => {
+      console.error(err);
+      alert('No se pudo acceder a la cámara. Usa el campo de código manual.');
+      document.getElementById('btn-start-scan').hidden = false;
+    });
+  }
+
+  function stopScanner() {
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+      html5QrCode = null;
+    }
+    document.getElementById('btn-start-scan').hidden = false;
+  }
+
+  function lookupClientManual() {
+    const code = document.getElementById('input-manual-code').value.trim();
+    if (!code) return;
+    onScanSuccess(code);
+  }
+
+  async function onScanSuccess(decodedText) {
+    stopScanner();
+
+    const { data: client, error } = await supabaseClient
+      .from('clients').select('*').eq('id', decodedText.trim()).maybeSingle();
+
+    if (error || !client) {
+      alert('Cliente no encontrado. Verifica el código e intenta de nuevo.');
+      return;
+    }
+
+    const { data: hasCard } = await supabaseClient.rpc('has_payment_method', { p_client_id: client.id });
+
+    foundClient = client;
+    document.getElementById('found-client-phone').textContent = client.phone;
+    document.getElementById('found-client-balance').textContent = '$' + Number(client.balance).toFixed(2);
+    document.getElementById('found-client-card').textContent = hasCard ? 'Sí ✓' : 'No tiene — no se puede cobrar';
+    document.getElementById('btn-charge').disabled = !hasCard;
+    document.getElementById('btn-charge').style.opacity = hasCard ? '1' : '.5';
+    document.getElementById('cashier-step-scan').hidden = true;
+    document.getElementById('cashier-step-client').hidden = false;
+  }
+
+  function showCashierMessage(text, isError) {
+    const el = document.getElementById('cashier-op-message');
+    el.textContent = text;
+    el.className = 'text-xs font-semibold text-center ' + (isError ? 'text-danger' : 'text-accent');
+    el.hidden = false;
+  }
+
+  async function registerPurchase() {
+    const amount = parseFloat(document.getElementById('input-purchase-amount').value);
+    if (!amount || amount <= 0) {
+      showCashierMessage('Ingresa un monto de compra válido.', true);
+      return;
+    }
+
+    showCashierMessage('Cobrando con PayPal…', false);
+
+    try {
+      const result = await callFunction('paypal-charge', {
+        restaurantCode: currentCashier.code,
+        restaurantPin: currentCashier.pin,
+        clientId: foundClient.id,
+        amount,
+      });
+
+      foundClient.balance = result.newBalance;
+      document.getElementById('found-client-balance').textContent = '$' + Number(result.newBalance).toFixed(2);
+      document.getElementById('input-purchase-amount').value = '';
+      updateCommissionDisplay(result.newCommissionOwed);
+      showCashierMessage('Cobro exitoso. Cashback generado: $' + Number(result.cashback).toFixed(2), false);
+    } catch (err) {
+      console.error(err);
+      showCashierMessage(err.message || 'No se pudo cobrar la compra.', true);
+    }
+  }
+
+  async function redeemCashback() {
+    const amount = parseFloat(document.getElementById('input-redeem-amount').value);
+    if (!amount || amount <= 0) {
+      showCashierMessage('Ingresa un monto a canjear válido.', true);
+      return;
+    }
+    if (Number(foundClient.balance) < MIN_REDEEM_BALANCE) {
+      showCashierMessage('El cliente necesita un mínimo de $' + MIN_REDEEM_BALANCE.toFixed(2) + ' para canjear.', true);
+      return;
+    }
+    if (amount > Number(foundClient.balance)) {
+      showCashierMessage('El monto excede el saldo disponible del cliente.', true);
+      return;
+    }
+
+    const newBalance = Math.round((Number(foundClient.balance) - amount) * 100) / 100;
+
+    const { error: updateError } = await supabaseClient
+      .from('clients').update({ balance: newBalance }).eq('id', foundClient.id);
+
+    if (updateError) {
+      showCashierMessage('Error al actualizar el saldo del cliente.', true);
+      return;
+    }
+
+    await supabaseClient.from('transactions').insert({
+      client_id: foundClient.id,
+      restaurant_id: currentCashier.id,
+      type: 'redeem',
+      amount,
+      cashback_generated: 0,
+    });
+
+    foundClient.balance = newBalance;
+    document.getElementById('found-client-balance').textContent = '$' + newBalance.toFixed(2);
+    document.getElementById('input-redeem-amount').value = '';
+    showCashierMessage('Canje aplicado. Nuevo saldo: $' + newBalance.toFixed(2), false);
+  }
+
+  // ========== DUEÑO ==========
+
+  async function handleOwnerLogin() {
+    const username = document.getElementById('input-owner-username').value.trim();
+    const password = document.getElementById('input-owner-password').value.trim();
+    const errorEl = document.getElementById('owner-login-error');
+    errorEl.hidden = true;
+
+    const { data, error } = await supabaseClient.rpc('verify_admin_login', { p_username: username, p_password: password });
+
+    if (error) {
+      errorEl.textContent = 'Error al conectar con la base de datos.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    const admin = data && data[0];
+    if (!admin) {
+      errorEl.textContent = 'Usuario o contraseña incorrectos.';
+      errorEl.hidden = false;
+      return;
+    }
+
+    document.getElementById('input-owner-username').value = '';
+    document.getElementById('input-owner-password').value = '';
+    switchView('owner-dashboard');
+    switchOwnerTab('restaurantes');
+    loadOwnerDashboard();
+  }
+
+  function logoutOwner() {
+    switchView('auth');
+  }
+
+  function switchOwnerTab(tab) {
+    ['restaurantes', 'actividad', 'clientes'].forEach(t => {
+      const isActive = t === tab;
+      document.getElementById('owner-tab-' + t).hidden = !isActive;
+      document.getElementById('owner-tab-btn-' + t).classList.toggle('active', isActive);
+    });
+  }
+
+  async function toggleFeatured(restaurantId, isFeatured) {
+    const { error } = await supabaseClient.rpc('admin_set_restaurant_featured', {
+      p_restaurant_id: restaurantId,
+      p_is_featured: isFeatured,
+    });
+    if (error) {
+      alert('No se pudo actualizar. Intenta de nuevo.');
+      loadOwnerDashboard();
+    }
+  }
+
+  function openRestaurantDetail(restaurantId) {
+    const restaurant = ownerRestaurants.find(r => r.id === restaurantId);
+    if (!restaurant) return;
+    currentDetailRestaurantId = restaurantId;
+
+    document.getElementById('restaurant-detail-name').textContent = restaurant.name;
+    document.getElementById('restaurant-detail-code').textContent = restaurant.code + (restaurant.category ? ' · ' + restaurant.category : '');
+    document.getElementById('restaurant-detail-commission').textContent = '$' + Number(restaurant.commission_owed || 0).toFixed(2);
+    document.getElementById('btn-settle-commission').hidden = Number(restaurant.commission_owed || 0) <= 0;
+    document.getElementById('restaurant-detail-featured').checked = !!restaurant.is_featured;
+
+    const listEl = document.getElementById('restaurant-detail-activity-list');
+    listEl.innerHTML = '';
+    const activity = ownerTransactions
+      .filter(tx => tx.restaurant_id === restaurantId)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    activity.forEach(tx => {
+      const client = ownerClients.find(c => c.id === tx.client_id);
+      const date = new Date(tx.created_at).toLocaleString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const row = document.createElement('div');
+      row.className = 'row-item flex justify-between items-center text-left';
+      row.innerHTML = tx.type === 'purchase'
+        ? `<div><p class="text-xs font-bold">${escapeHtml(client?.phone || 'Cliente')}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular">$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] font-bold tabular text-accent">+$${Number(tx.cashback_generated).toFixed(2)} cashback</p></div>`
+        : `<div><p class="text-xs font-bold">${escapeHtml(client?.phone || 'Cliente')}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular text-warn">-$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] text-muted">Canje</p></div>`;
+      listEl.appendChild(row);
+    });
+    document.getElementById('restaurant-detail-activity-empty').hidden = activity.length > 0;
+
+    switchView('owner-restaurant-detail');
+  }
+
+  async function settleCommissionFromDetail() {
+    if (!currentDetailRestaurantId) return;
+    if (!confirm('¿Confirmas que ya recibiste el pago de esta deuda? Esto la reinicia a $0.')) return;
+
+    const { error } = await supabaseClient.rpc('admin_settle_restaurant_commission', {
+      p_restaurant_id: currentDetailRestaurantId,
+    });
+    if (error) {
+      alert('No se pudo actualizar. Intenta de nuevo.');
+      return;
+    }
+
+    document.getElementById('restaurant-detail-commission').textContent = '$0.00';
+    document.getElementById('btn-settle-commission').hidden = true;
+    await loadOwnerDashboard();
+  }
+
+  async function loadOwnerDashboard() {
+    const [{ data: clients, error: clientsError }, { data: restaurants, error: restaurantsError }, { data: transactions, error: txError }] = await Promise.all([
+      supabaseClient.from('clients').select('*').order('created_at', { ascending: false }),
+      supabaseClient.rpc('admin_list_restaurants'),
+      supabaseClient.from('transactions').select('*').order('created_at', { ascending: false }),
+    ]);
+
+    if (clientsError || restaurantsError || txError) {
+      alert('Error al cargar los datos de la red.');
+      return;
+    }
+
+    const restaurantMap = {};
+    restaurants.forEach(r => { restaurantMap[r.id] = r; });
+
+    let totalSales = 0, totalEarned = 0, totalRedeemed = 0;
+    const salesByRestaurant = {};
+
+    transactions.forEach(tx => {
+      if (tx.type === 'purchase') {
+        totalSales += Number(tx.amount);
+        totalEarned += Number(tx.cashback_generated);
+        salesByRestaurant[tx.restaurant_id] = (salesByRestaurant[tx.restaurant_id] || 0) + Number(tx.amount);
+      } else if (tx.type === 'redeem') {
+        totalRedeemed += Number(tx.amount);
+      }
+    });
+
+    document.getElementById('owner-stat-clients').textContent = clients.length;
+    document.getElementById('owner-stat-restaurants').textContent = restaurants.length;
+    document.getElementById('owner-stat-sales').textContent = '$' + totalSales.toFixed(2);
+    document.getElementById('owner-stat-circulating').textContent = '$' + (totalEarned - totalRedeemed).toFixed(2);
+    document.getElementById('owner-stat-earned').textContent = '$' + totalEarned.toFixed(2);
+    document.getElementById('owner-stat-redeemed').textContent = '$' + totalRedeemed.toFixed(2);
+
+    ownerClients = clients;
+    ownerRestaurants = restaurants;
+    ownerTransactions = transactions;
+
+    const restaurantListEl = document.getElementById('owner-restaurant-list');
+    restaurantListEl.innerHTML = '';
+    restaurants
+      .slice()
+      .sort((a, b) => (salesByRestaurant[b.id] || 0) - (salesByRestaurant[a.id] || 0))
+      .forEach(r => {
+        const owes = Number(r.commission_owed || 0) > 0;
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.onclick = () => openRestaurantDetail(r.id);
+        row.className = 'row-item text-left w-full';
+        row.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div>
+              <p class="text-xs font-bold">${escapeHtml(r.name)}${r.is_featured ? ' <span class="pill" style="background: var(--color-warn); color:#2a1c05;">★</span>' : ''}</p>
+              <p class="text-[10px] font-mono text-muted">${escapeHtml(r.code)}${r.category ? ' · ' + escapeHtml(r.category) : ''}</p>
+            </div>
+            <p class="text-xs font-bold text-accent">$${(salesByRestaurant[r.id] || 0).toFixed(2)}</p>
+          </div>
+          <div class="flex justify-between items-center mt-1.5">
+            <p class="text-[11px] ${owes ? 'font-bold text-warn' : 'text-muted'}">Deuda: $${Number(r.commission_owed || 0).toFixed(2)}</p>
+            <span class="text-[11px] font-semibold text-accent">Ver actividad →</span>
+          </div>`;
+        restaurantListEl.appendChild(row);
+      });
+    document.getElementById('owner-restaurant-empty').hidden = restaurants.length > 0;
+
+    const activityListEl = document.getElementById('owner-activity-list');
+    activityListEl.innerHTML = '';
+    transactions.slice(0, 40).forEach(tx => {
+      const client = clients.find(c => c.id === tx.client_id);
+      const restaurant = restaurantMap[tx.restaurant_id];
+      const date = new Date(tx.created_at).toLocaleString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const row = document.createElement('div');
+      row.className = 'row-item flex justify-between items-center text-left';
+      row.innerHTML = tx.type === 'purchase'
+        ? `<div><p class="text-xs font-bold">${escapeHtml(client?.phone || 'Cliente')} → ${escapeHtml(restaurant?.name || 'Restaurante')}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular">$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] font-bold tabular text-accent">+$${Number(tx.cashback_generated).toFixed(2)}</p></div>`
+        : `<div><p class="text-xs font-bold">${escapeHtml(client?.phone || 'Cliente')} → ${escapeHtml(restaurant?.name || 'Restaurante')}</p><p class="text-[10px] text-muted">${date}</p></div>
+           <div class="text-right"><p class="text-xs font-bold tabular text-warn">-$${Number(tx.amount).toFixed(2)}</p><p class="text-[10px] text-muted">Canje</p></div>`;
+      activityListEl.appendChild(row);
+    });
+    document.getElementById('owner-activity-empty').hidden = transactions.length > 0;
+
+    const clientListEl = document.getElementById('owner-client-list');
+    clientListEl.innerHTML = '';
+    clients.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'row-item flex justify-between items-center text-left';
+      row.innerHTML = `<p class="text-xs font-bold">${escapeHtml(c.phone)}</p><p class="text-xs font-bold text-accent">$${Number(c.balance).toFixed(2)}</p>`;
+      clientListEl.appendChild(row);
+    });
+    document.getElementById('owner-client-empty').hidden = clients.length > 0;
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>
