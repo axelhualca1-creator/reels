@@ -250,7 +250,14 @@
       </div>
 
       <div id="access-tab-login" class="space-y-4">
-        <div class="space-y-1.5">
+        <div id="saved-code-display" hidden class="row-item flex justify-between items-center">
+          <div>
+            <p class="text-[10px] font-bold uppercase text-muted">Restaurante</p>
+            <p id="saved-code-text" class="text-sm font-bold font-mono"></p>
+          </div>
+          <button onclick="forgetSavedRestaurantCode()" class="btn-ghost text-xs">Cambiar</button>
+        </div>
+        <div id="code-input-wrap" class="space-y-1.5">
           <label class="field-label" for="input-restaurant-code">Código de restaurante</label>
           <input type="text" id="input-restaurant-code" placeholder="Ej: A1B2C3" class="field uppercase">
         </div>
@@ -857,6 +864,39 @@
       document.getElementById('access-tab-' + t).hidden = !isActive;
       document.getElementById('access-tab-btn-' + t).classList.toggle('active', isActive);
     });
+    if (tab === 'login') applySavedRestaurantCode();
+  }
+
+  function getSavedRestaurantCode() {
+    try { return localStorage.getItem('savedRestaurantCode') || null; } catch (e) { return null; }
+  }
+
+  function saveRestaurantCode(code) {
+    try { localStorage.setItem('savedRestaurantCode', code); } catch (e) {}
+  }
+
+  function forgetSavedRestaurantCode() {
+    try { localStorage.removeItem('savedRestaurantCode'); } catch (e) {}
+    applySavedRestaurantCode();
+  }
+
+  function applySavedRestaurantCode() {
+    const saved = getSavedRestaurantCode();
+    const displayEl = document.getElementById('saved-code-display');
+    const inputWrapEl = document.getElementById('code-input-wrap');
+    const pinEl = document.getElementById('input-cashier-pin');
+    if (saved) {
+      document.getElementById('saved-code-text').textContent = saved;
+      displayEl.hidden = false;
+      inputWrapEl.hidden = true;
+      document.getElementById('input-restaurant-code').value = saved;
+      pinEl.value = '';
+      pinEl.focus();
+    } else {
+      displayEl.hidden = true;
+      inputWrapEl.hidden = false;
+      document.getElementById('input-restaurant-code').value = '';
+    }
   }
   switchAccessTab('login');
 
@@ -894,6 +934,7 @@
 
   function continueToPos() {
     currentCashier = { id: pendingLogin.id, code: pendingLogin.code, pin: pendingLogin.pin, name: pendingLogin.name };
+    saveRestaurantCode(currentCashier.code);
     document.getElementById('cashier-restaurant-name').textContent = currentCashier.name;
     updateCommissionDisplay(0);
     switchView('pos');
@@ -988,6 +1029,8 @@
     }
 
     currentCashier = { id: restaurant.id, code: restaurant.code, pin, name: restaurant.name };
+    saveRestaurantCode(restaurant.code);
+    document.getElementById('input-cashier-pin').value = '';
     document.getElementById('cashier-restaurant-name').textContent = restaurant.name;
     updateCommissionDisplay(restaurant.commission_owed);
     switchView('pos');
@@ -998,7 +1041,6 @@
   function logoutCashier() {
     stopScanner();
     currentCashier = null;
-    document.getElementById('input-restaurant-code').value = '';
     document.getElementById('input-cashier-pin').value = '';
     switchView('restaurant-access');
     switchAccessTab('login');
@@ -1071,6 +1113,7 @@
     document.getElementById('btn-charge').style.opacity = hasCard ? '1' : '.5';
     document.getElementById('cashier-step-scan').hidden = true;
     document.getElementById('cashier-step-client').hidden = false;
+    if (hasCard) document.getElementById('input-purchase-amount').focus();
   }
 
   function showCashierMessage(text, isError) {
@@ -1102,6 +1145,7 @@
       document.getElementById('input-purchase-amount').value = '';
       updateCommissionDisplay(result.newCommissionOwed);
       showCashierMessage('Cobro exitoso. Cashback generado: $' + Number(result.cashback).toFixed(2), false);
+      setTimeout(() => { resetCashierScan(); startScanner(); }, 1800);
     } catch (err) {
       console.error(err);
       showCashierMessage(err.message || 'No se pudo cobrar la compra.', true);
