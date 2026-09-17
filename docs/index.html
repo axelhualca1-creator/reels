@@ -492,6 +492,7 @@
   let html5QrCode = null;
   let cardFields = null;
   let currentSetupTokenId = null;
+  let currentPaypalSetupTokenId = null;
   let ownerClients = [];
   let ownerRestaurants = [];
   let ownerTransactions = [];
@@ -709,17 +710,24 @@
     });
   }
 
-  function initPayPalButton() {
+  async function initPayPalButton() {
     const errorEl = document.getElementById('card-error');
     errorEl.hidden = true;
+
+    try {
+      const { setupTokenId } = await callFunction('paypal-create-setup-token', { clientId: currentClient.id, method: 'paypal' });
+      currentPaypalSetupTokenId = setupTokenId;
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = 'No se pudo iniciar la vinculación con PayPal.';
+      errorEl.hidden = false;
+      return;
+    }
 
     paypal.Buttons({
       fundingSource: paypal.FUNDING.PAYPAL,
       style: { label: 'pay', height: 45 },
-      createVaultSetupToken: async () => {
-        const { setupTokenId } = await callFunction('paypal-create-setup-token', { clientId: currentClient.id, method: 'paypal' });
-        return setupTokenId;
-      },
+      createVaultSetupToken: () => Promise.resolve(currentPaypalSetupTokenId),
       onApprove: ({ vaultSetupToken }) => completePaymentSetup(vaultSetupToken),
       onError: (err) => {
         console.error(err);
