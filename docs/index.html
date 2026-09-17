@@ -323,6 +323,8 @@
       <div class="rounded-2xl p-3 text-center surface-muted">
         <p id="cashier-commission-label" class="text-[10px] font-bold uppercase text-muted">Deuda con la red (10% semanal)</p>
         <p id="cashier-commission-owed" class="text-lg font-bold font-display tabular mt-0.5">$0.00</p>
+        <button onclick="claimCommissionPayment()" id="btn-claim-payment" hidden class="btn-ghost text-[11px] mt-1.5">Ya se saldó esta cuenta — avisar</button>
+        <p id="claim-payment-message" hidden class="text-[11px] font-semibold mt-1.5"></p>
       </div>
 
       <div id="cashier-step-scan" class="space-y-3">
@@ -412,6 +414,7 @@
 
       <div class="tab-row flex text-xs">
         <button onclick="switchOwnerTab('restaurantes')" id="owner-tab-btn-restaurantes" class="tab-btn">Restaurantes</button>
+        <button onclick="switchOwnerTab('avisos')" id="owner-tab-btn-avisos" class="tab-btn">Avisos<span id="owner-avisos-badge" hidden class="pill" style="background: var(--color-danger); color:#fff; margin-left:0.25rem;">0</span></button>
         <button onclick="switchOwnerTab('actividad')" id="owner-tab-btn-actividad" class="tab-btn">Actividad</button>
         <button onclick="switchOwnerTab('clientes')" id="owner-tab-btn-clientes" class="tab-btn">Clientes</button>
       </div>
@@ -419,6 +422,11 @@
       <div id="owner-tab-restaurantes" class="space-y-2" style="max-height:18rem; overflow-y:auto;">
         <div id="owner-restaurant-list" class="space-y-2"></div>
         <p id="owner-restaurant-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay restaurantes registrados.</p>
+      </div>
+
+      <div id="owner-tab-avisos" hidden class="space-y-2" style="max-height:18rem; overflow-y:auto;">
+        <div id="owner-avisos-list" class="space-y-2"></div>
+        <p id="owner-avisos-empty" hidden class="text-xs text-muted text-center py-6">No hay avisos de pago pendientes.</p>
       </div>
 
       <div id="owner-tab-actividad" hidden class="space-y-2" style="max-height:18rem; overflow-y:auto;">
@@ -897,6 +905,37 @@
     const v = Number(value);
     document.getElementById('cashier-commission-label').textContent = v < 0 ? 'Saldo a favor del restaurante' : 'Deuda con la red (10% semanal)';
     document.getElementById('cashier-commission-owed').textContent = '$' + Math.abs(v).toFixed(2);
+    document.getElementById('btn-claim-payment').hidden = v === 0;
+    document.getElementById('claim-payment-message').hidden = true;
+  }
+
+  async function claimCommissionPayment() {
+    if (!currentCashier) return;
+    const btn = document.getElementById('btn-claim-payment');
+    const msg = document.getElementById('claim-payment-message');
+    btn.disabled = true;
+    btn.textContent = 'Enviando aviso…';
+    msg.hidden = true;
+
+    const { data, error } = await supabaseClient.rpc('restaurant_claim_payment', {
+      p_code: currentCashier.code,
+      p_pin: currentCashier.pin,
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Ya se saldó esta cuenta — avisar';
+
+    if (error) {
+      msg.textContent = error.message || 'No se pudo enviar el aviso.';
+      msg.className = 'text-[11px] font-semibold mt-1.5 text-danger';
+      msg.hidden = false;
+      return;
+    }
+
+    btn.hidden = true;
+    msg.textContent = 'Aviso enviado. El dueño de la red lo va a confirmar pronto.';
+    msg.className = 'text-[11px] font-semibold mt-1.5 text-accent';
+    msg.hidden = false;
   }
 
   async function checkStripeConnectStatus() {
@@ -1131,6 +1170,7 @@
     switchView('owner-dashboard');
     switchOwnerTab('restaurantes');
     loadOwnerDashboard();
+    loadPaymentClaims();
   }
 
   function logoutOwner() {
@@ -1138,11 +1178,55 @@
   }
 
   function switchOwnerTab(tab) {
-    ['restaurantes', 'actividad', 'clientes'].forEach(t => {
+    ['restaurantes', 'avisos', 'actividad', 'clientes'].forEach(t => {
       const isActive = t === tab;
       document.getElementById('owner-tab-' + t).hidden = !isActive;
       document.getElementById('owner-tab-btn-' + t).classList.toggle('active', isActive);
     });
+  }
+
+  async function loadPaymentClaims() {
+    const { data: claims, error } = await supabaseClient.rpc('admin_list_payment_claims');
+    if (error) return;
+
+    const badge = document.getElementById('owner-avisos-badge');
+    badge.textContent = claims.length;
+    badge.hidden = claims.length === 0;
+
+    const listEl = document.getElementById('owner-avisos-list');
+    listEl.innerHTML = '';
+    claims.forEach(c => {
+      const isFavor = Number(c.commission_at_claim) < 0;
+      const date = new Date(c.created_at).toLocaleString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const row = document.createElement('div');
+      row.className = 'row-item text-left';
+      row.innerHTML = `
+        <p class="text-xs font-bold">${escapeHtml(c.restaurant_name)}</p>
+        <p class="text-[10px] font-mono text-muted">${escapeHtml(c.restaurant_code)} · ${date}</p>
+        <p class="text-xs font-bold mt-1 ${isFavor ? 'text-accent' : 'text-warn'}">${isFavor ? 'Dice que ya le pagaste: ' : 'Dice que ya te pagó: '}$${Math.abs(Number(c.commission_at_claim)).toFixed(2)}</p>
+        <div class="flex gap-2 mt-2">
+          <button data-claim-id="${c.id}" data-confirm="true" class="btn btn-primary w-full text-xs" style="padding:0.5rem;">Confirmar</button>
+          <button data-claim-id="${c.id}" data-confirm="false" class="btn surface-muted w-full text-xs" style="padding:0.5rem; color:var(--color-text);">Descartar</button>
+        </div>`;
+      row.querySelectorAll('button[data-claim-id]').forEach(btn => {
+        btn.addEventListener('click', () => resolvePaymentClaim(btn.dataset.claimId, btn.dataset.confirm === 'true'));
+      });
+      listEl.appendChild(row);
+    });
+    document.getElementById('owner-avisos-empty').hidden = claims.length > 0;
+  }
+
+  async function resolvePaymentClaim(claimId, confirm) {
+    const { error } = await supabaseClient.rpc('admin_resolve_payment_claim', {
+      p_claim_id: claimId,
+      p_confirm: confirm,
+    });
+    if (error) {
+      alert('No se pudo procesar el aviso. Intenta de nuevo.');
+      return;
+    }
+    await loadPaymentClaims();
+    await loadOwnerDashboard();
   }
 
   async function toggleFeatured(restaurantId, isFeatured) {
