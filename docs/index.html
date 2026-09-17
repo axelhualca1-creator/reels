@@ -107,37 +107,21 @@
     <div id="view-login" class="space-y-6" hidden>
       <div class="text-center space-y-1">
         <h1 class="text-xl font-extrabold font-display">Ingresar</h1>
-        <p class="text-sm text-muted">Escribe el número con el que te registraste</p>
+        <p class="text-sm text-muted">Escribe tu número y contraseña</p>
       </div>
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="field-label" for="input-login-phone">Número de celular</label>
           <input type="tel" id="input-login-phone" placeholder="Ej: 0991234567" class="field text-lg tabular">
         </div>
-        <button onclick="handleLogin()" id="btn-send-login-otp" class="btn btn-primary w-full">Enviar código por WhatsApp</button>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-login-password">Contraseña</label>
+          <input type="password" id="input-login-password" placeholder="••••••••" class="field">
+        </div>
+        <button onclick="handleLogin()" id="btn-login" class="btn btn-primary w-full">Ingresar</button>
         <p id="login-error" hidden class="text-xs font-semibold text-center text-danger"></p>
         <div class="pt-2 text-center">
           <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PANTALLA: VERIFICAR CÓDIGO DE WHATSAPP -->
-    <div id="view-login-otp" class="space-y-6" hidden>
-      <div class="text-center space-y-1">
-        <h1 class="text-xl font-extrabold font-display">Verifica tu número</h1>
-        <p class="text-sm text-muted">Te enviamos un código de 6 dígitos por WhatsApp al <span id="otp-phone-display" class="font-bold"></span></p>
-      </div>
-      <div class="space-y-4">
-        <div class="space-y-1.5">
-          <label class="field-label" for="input-otp-code">Código de verificación</label>
-          <input type="tel" id="input-otp-code" maxlength="6" placeholder="000000" class="field text-2xl tabular text-center" style="letter-spacing: 0.3em;">
-        </div>
-        <button onclick="handleVerifyLoginOtp()" class="btn btn-primary w-full">Verificar</button>
-        <p id="otp-error" hidden class="text-xs font-semibold text-center text-danger"></p>
-        <div class="pt-2 text-center space-y-1">
-          <button onclick="resendLoginOtp()" class="btn-ghost text-xs block w-full">Reenviar código</button>
-          <button onclick="switchView('login')" class="btn-ghost text-xs">← Cambiar número</button>
         </div>
       </div>
     </div>
@@ -157,7 +141,11 @@
           <label class="field-label" for="input-register-email">Correo de Gmail</label>
           <input type="email" id="input-register-email" placeholder="tunombre@gmail.com" class="field">
         </div>
-        <button onclick="handleRegisterClient()" class="btn btn-primary w-full">Continuar</button>
+        <div class="space-y-1.5">
+          <label class="field-label" for="input-register-password">Crear contraseña</label>
+          <input type="password" id="input-register-password" placeholder="Mínimo 6 caracteres" class="field">
+        </div>
+        <button onclick="handleRegisterClient()" id="btn-register" class="btn btn-primary w-full">Continuar</button>
         <p id="register-error" hidden class="text-xs font-semibold text-center text-danger"></p>
         <div class="pt-2 text-center">
           <button onclick="switchView('auth')" class="btn-ghost text-xs">← Volver</button>
@@ -538,10 +526,9 @@
 
   // ========== CLIENTE ==========
 
-  let pendingLoginPhone = null;
-
   async function handleLogin() {
     const phone = document.getElementById('input-login-phone').value.trim();
+    const password = document.getElementById('input-login-password').value;
     const errorEl = document.getElementById('login-error');
     errorEl.hidden = true;
 
@@ -550,67 +537,40 @@
       errorEl.hidden = false;
       return;
     }
-
-    const btn = document.getElementById('btn-send-login-otp');
-    btn.disabled = true;
-    btn.textContent = 'Enviando código…';
-
-    try {
-      await callFunction('send-login-otp', { phone });
-      pendingLoginPhone = phone;
-      document.getElementById('otp-phone-display').textContent = phone;
-      document.getElementById('input-otp-code').value = '';
-      document.getElementById('otp-error').hidden = true;
-      switchView('login-otp');
-    } catch (err) {
-      errorEl.textContent = err.message || 'No se pudo enviar el código. Intenta de nuevo.';
-      errorEl.hidden = false;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Enviar código por WhatsApp';
-    }
-  }
-
-  async function handleVerifyLoginOtp() {
-    const code = document.getElementById('input-otp-code').value.trim();
-    const errorEl = document.getElementById('otp-error');
-    errorEl.hidden = true;
-
-    if (!code) {
-      errorEl.textContent = 'Ingresa el código que te llegó por WhatsApp.';
+    if (!password) {
+      errorEl.textContent = 'Ingresa tu contraseña.';
       errorEl.hidden = false;
       return;
     }
 
+    const btn = document.getElementById('btn-login');
+    btn.disabled = true;
+    btn.textContent = 'Ingresando…';
+
     try {
-      const result = await callFunction('verify-login-otp', { phone: pendingLoginPhone, code });
-      currentClient = result.client;
+      const { data, error } = await supabaseClient.rpc('verify_client_login', { p_phone: phone, p_password: password });
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        errorEl.textContent = 'Número o contraseña incorrectos.';
+        errorEl.hidden = false;
+        return;
+      }
+      currentClient = data[0];
+      document.getElementById('input-login-password').value = '';
       goToDashboardOrPaymentSetup();
     } catch (err) {
-      errorEl.textContent = err.message || 'Código incorrecto.';
+      errorEl.textContent = err.message || 'No se pudo iniciar sesión. Intenta de nuevo.';
       errorEl.hidden = false;
-    }
-  }
-
-  async function resendLoginOtp() {
-    if (!pendingLoginPhone) return;
-    const errorEl = document.getElementById('otp-error');
-    errorEl.hidden = true;
-    try {
-      await callFunction('send-login-otp', { phone: pendingLoginPhone });
-      errorEl.className = 'text-xs font-semibold text-center text-accent';
-      errorEl.textContent = 'Te enviamos un nuevo código.';
-      errorEl.hidden = false;
-    } catch (err) {
-      errorEl.className = 'text-xs font-semibold text-center text-danger';
-      errorEl.textContent = err.message || 'No se pudo reenviar el código.';
-      errorEl.hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Ingresar';
     }
   }
 
   async function handleRegisterClient() {
     const phone = document.getElementById('input-register-phone').value.trim();
     const email = document.getElementById('input-register-email').value.trim();
+    const password = document.getElementById('input-register-password').value;
     const errorEl = document.getElementById('register-error');
     errorEl.hidden = true;
 
@@ -624,28 +584,30 @@
       errorEl.hidden = false;
       return;
     }
-
-    const { data: existing } = await supabaseClient
-      .from('clients').select('id').eq('phone', phone).maybeSingle();
-
-    if (existing) {
-      errorEl.textContent = 'Ya existe una cuenta con ese número. Usa "Ingresar".';
+    if (!password || password.length < 6) {
+      errorEl.textContent = 'La contraseña debe tener al menos 6 caracteres.';
       errorEl.hidden = false;
       return;
     }
 
-    const { data: newClient, error: insertError } = await supabaseClient
-      .from('clients').insert({ phone, email, balance: 0 }).select().single();
+    const btn = document.getElementById('btn-register');
+    btn.disabled = true;
+    btn.textContent = 'Creando cuenta…';
 
-    if (insertError) {
-      errorEl.textContent = 'No se pudo crear la cuenta. Intenta de nuevo.';
+    try {
+      const { data, error } = await supabaseClient.rpc('register_client', { p_phone: phone, p_email: email, p_password: password });
+      if (error) throw error;
+      currentClient = data[0];
+      document.getElementById('input-register-password').value = '';
+      switchView('add-card');
+      switchPaymentMethodTab('card');
+    } catch (err) {
+      errorEl.textContent = err.message || 'No se pudo crear la cuenta. Intenta de nuevo.';
       errorEl.hidden = false;
-      return;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Continuar';
     }
-
-    currentClient = newClient;
-    switchView('add-card');
-    switchPaymentMethodTab('card');
   }
 
   function goToDashboardOrPaymentSetup() {
@@ -664,8 +626,10 @@
   function logout() {
     currentClient = null;
     document.getElementById('input-login-phone').value = '';
+    document.getElementById('input-login-password').value = '';
     document.getElementById('input-register-phone').value = '';
     document.getElementById('input-register-email').value = '';
+    document.getElementById('input-register-password').value = '';
     switchView('auth');
   }
 
@@ -1010,7 +974,7 @@
     stopScanner();
 
     const { data: client, error } = await supabaseClient
-      .from('clients').select('*').eq('id', decodedText.trim()).maybeSingle();
+      .from('clients').select('id, phone, balance').eq('id', decodedText.trim()).maybeSingle();
 
     if (error || !client) {
       const errorEl = document.getElementById('scan-error');
@@ -1235,7 +1199,7 @@
 
   async function loadOwnerDashboard() {
     const [{ data: clients, error: clientsError }, { data: restaurants, error: restaurantsError }, { data: transactions, error: txError }] = await Promise.all([
-      supabaseClient.from('clients').select('*').order('created_at', { ascending: false }),
+      supabaseClient.from('clients').select('id, phone, email, balance, created_at').order('created_at', { ascending: false }),
       supabaseClient.rpc('admin_list_restaurants'),
       supabaseClient.from('transactions').select('*').order('created_at', { ascending: false }),
     ]);
