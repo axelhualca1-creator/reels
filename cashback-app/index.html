@@ -464,7 +464,15 @@
       <div class="rounded-2xl p-4 text-center" style="background: var(--color-warn); background: color-mix(in srgb, var(--color-warn) 16%, var(--color-surface));">
         <p class="text-[10px] font-bold uppercase text-warn">Deuda con la red (10% semanal)</p>
         <p id="restaurant-detail-commission" class="text-3xl font-extrabold font-display tabular mt-1 text-warn">$0.00</p>
-        <button onclick="settleCommissionFromDetail()" id="btn-settle-commission" class="btn btn-warn w-full mt-3">Cobrar deuda</button>
+        <button onclick="confirmSettleCommission()" id="btn-settle-commission" class="btn btn-warn w-full mt-3">Cobrar deuda</button>
+        <div id="settle-commission-confirm" hidden class="space-y-2 mt-3">
+          <p class="text-xs font-semibold text-warn">¿Confirmas que ya recibiste el pago de esta deuda? Esto la reinicia a $0.</p>
+          <div class="flex gap-2">
+            <button onclick="cancelSettleCommission()" class="btn surface-muted w-full" style="color: var(--color-text);">Cancelar</button>
+            <button onclick="settleCommissionFromDetail()" id="btn-settle-commission-confirm" class="btn btn-warn w-full">Sí, ya la cobré</button>
+          </div>
+        </div>
+        <p id="settle-commission-error" hidden class="text-xs font-semibold text-danger mt-2"></p>
       </div>
 
       <label class="flex items-center gap-1.5 text-xs font-semibold text-muted">
@@ -1152,6 +1160,8 @@
     document.getElementById('restaurant-detail-code').textContent = restaurant.code + (restaurant.category ? ' · ' + restaurant.category : '');
     document.getElementById('restaurant-detail-commission').textContent = '$' + Number(restaurant.commission_owed || 0).toFixed(2);
     document.getElementById('btn-settle-commission').hidden = Number(restaurant.commission_owed || 0) <= 0;
+    document.getElementById('settle-commission-confirm').hidden = true;
+    document.getElementById('settle-commission-error').hidden = true;
     document.getElementById('restaurant-detail-featured').checked = !!restaurant.is_featured;
 
     const listEl = document.getElementById('restaurant-detail-activity-list');
@@ -1177,19 +1187,40 @@
     switchView('owner-restaurant-detail');
   }
 
+  function confirmSettleCommission() {
+    document.getElementById('btn-settle-commission').hidden = true;
+    document.getElementById('settle-commission-confirm').hidden = false;
+    document.getElementById('settle-commission-error').hidden = true;
+  }
+
+  function cancelSettleCommission() {
+    document.getElementById('btn-settle-commission').hidden = false;
+    document.getElementById('settle-commission-confirm').hidden = true;
+  }
+
   async function settleCommissionFromDetail() {
     if (!currentDetailRestaurantId) return;
-    if (!confirm('¿Confirmas que ya recibiste el pago de esta deuda? Esto la reinicia a $0.')) return;
+
+    const confirmBtn = document.getElementById('btn-settle-commission-confirm');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Procesando…';
 
     const { error } = await supabaseClient.rpc('admin_settle_restaurant_commission', {
       p_restaurant_id: currentDetailRestaurantId,
     });
+
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Sí, ya la cobré';
+
     if (error) {
-      alert('No se pudo actualizar. Intenta de nuevo.');
+      const errorEl = document.getElementById('settle-commission-error');
+      errorEl.textContent = 'No se pudo actualizar. Intenta de nuevo.';
+      errorEl.hidden = false;
       return;
     }
 
     document.getElementById('restaurant-detail-commission').textContent = '$0.00';
+    document.getElementById('settle-commission-confirm').hidden = true;
     document.getElementById('btn-settle-commission').hidden = true;
     await loadOwnerDashboard();
   }
