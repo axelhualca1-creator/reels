@@ -156,7 +156,7 @@
     <div id="view-add-card" hidden class="space-y-5">
       <div class="text-center space-y-1">
         <h1 class="text-xl font-extrabold font-display">Agrega tu tarjeta</h1>
-        <p class="text-xs text-muted">La usaremos para cobrar tus compras cuando pagues con tu QR. Nunca vemos tu número de tarjeta: lo procesa Stripe de forma segura.</p>
+        <p id="card-add-description" class="text-xs text-muted">La usaremos para cobrar tus compras cuando pagues con tu QR. Nunca vemos tu número de tarjeta: lo procesa Stripe de forma segura.</p>
       </div>
 
       <div class="space-y-3">
@@ -179,6 +179,7 @@
           </div>
         </div>
         <button onclick="submitCard()" id="btn-save-card" class="btn btn-primary w-full">Guardar tarjeta y continuar</button>
+        <button onclick="cancelAddCard()" id="card-add-back-btn" hidden class="btn-ghost text-xs w-full text-center">← Volver</button>
       </div>
 
       <p id="card-error" hidden class="text-xs font-semibold text-center text-danger"></p>
@@ -334,6 +335,14 @@
         <p id="claim-payment-message" hidden class="text-[11px] font-semibold mt-1.5"></p>
       </div>
 
+      <div class="flex items-center justify-between rounded-2xl p-3 surface-muted">
+        <div class="text-left">
+          <p class="text-[10px] font-bold uppercase text-muted">Tarjeta del restaurante</p>
+          <p id="cashier-card-status" class="text-xs font-bold">No agregada</p>
+        </div>
+        <button onclick="startAddCardFor('restaurant')" class="btn-ghost text-xs">Agregar/cambiar</button>
+      </div>
+
       <div id="cashier-step-scan" class="space-y-3">
         <p class="text-xs font-bold text-muted text-center">Escanea el QR del cliente</p>
         <div id="qr-reader" class="rounded-2xl overflow-hidden surface-muted"></div>
@@ -408,6 +417,14 @@
         <button onclick="logoutOwner()" class="btn-link-danger text-xs">Salir</button>
       </div>
 
+      <div class="flex items-center justify-between rounded-2xl p-3 surface-muted">
+        <div class="text-left">
+          <p class="text-[10px] font-bold uppercase text-muted">Tu tarjeta</p>
+          <p id="owner-card-status" class="text-xs font-bold">No agregada</p>
+        </div>
+        <button onclick="startAddCardFor('admin')" class="btn-ghost text-xs">Agregar/cambiar</button>
+      </div>
+
       <div class="grid grid-cols-2 gap-3">
         <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Clientes registrados</p><p id="owner-stat-clients" class="text-lg font-bold font-display tabular mt-1">0</p></div>
         <div class="stat-tile"><p class="text-[10px] font-bold uppercase text-muted">Restaurantes activos</p><p id="owner-stat-restaurants" class="text-lg font-bold font-display tabular mt-1">0</p></div>
@@ -477,7 +494,10 @@
       </label>
 
       <div>
-        <p class="text-xs font-bold text-muted mb-2">Actividad de este restaurante</p>
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-bold text-muted">Actividad de este restaurante</p>
+          <button onclick="downloadRestaurantHistory()" class="btn-ghost text-xs">⬇ Descargar historial (CSV)</button>
+        </div>
         <div id="restaurant-detail-activity-list" class="space-y-2" style="max-height:18rem; overflow-y:auto;"></div>
         <p id="restaurant-detail-activity-empty" hidden class="text-xs text-muted text-center py-6">Todavía no hay movimientos de este restaurante.</p>
       </div>
@@ -496,6 +516,7 @@
 
   let currentClient = null;
   let currentCashier = null;
+  let currentAdmin = null;
   let foundClient = null;
   let html5QrCode = null;
   let stripe = null;
@@ -504,6 +525,7 @@
   let cardExpiryElement = null;
   let cardCvcElement = null;
   let stripeClientSecret = null;
+  let cardTarget = null;
   let ownerClients = [];
   let ownerRestaurants = [];
   let ownerTransactions = [];
@@ -611,6 +633,8 @@
       if (error) throw error;
       currentClient = data[0];
       document.getElementById('input-register-password').value = '';
+      cardTarget = null;
+      resetCardFields();
       switchView('add-card');
       initCardFields();
     } catch (err) {
@@ -625,6 +649,8 @@
   function goToDashboardOrPaymentSetup() {
     supabaseClient.rpc('has_payment_method', { p_client_id: currentClient.id }).then(({ data: hasMethod }) => {
       if (!hasMethod) {
+        cardTarget = null;
+        resetCardFields();
         switchView('add-card');
         initCardFields();
       } else {
@@ -661,14 +687,49 @@
     stripeClientSecret = null;
   }
 
+  function startAddCardFor(ownerType) {
+    if (ownerType === 'restaurant') {
+      cardTarget = { ownerType: 'restaurant', ownerId: currentCashier.id, returnView: 'pos', onDone: loadCashierCardStatus };
+      document.getElementById('card-add-description').textContent = 'La usaremos para pagarte automáticamente en cuanto tengamos el reparto de pagos activado.';
+    } else if (ownerType === 'admin') {
+      cardTarget = { ownerType: 'admin', ownerId: currentAdmin.id, returnView: 'owner-dashboard', onDone: loadAdminCardStatus };
+      document.getElementById('card-add-description').textContent = 'La usaremos para pagarte o cobrarte automáticamente cuando el reparto de pagos esté activado.';
+    }
+    document.getElementById('card-add-back-btn').hidden = false;
+    resetCardFields();
+    switchView('add-card');
+    initCardFields();
+  }
+
+  function cancelAddCard() {
+    const target = cardTarget;
+    resetCardFields();
+    cardTarget = null;
+    document.getElementById('card-add-back-btn').hidden = true;
+    document.getElementById('card-add-description').textContent = 'La usaremos para cobrar tus compras cuando pagues con tu QR. Nunca vemos tu número de tarjeta: lo procesa Stripe de forma segura.';
+    if (target?.returnView) switchView(target.returnView);
+    else switchView('auth');
+  }
+
   async function completePaymentSetup(paymentMethodId) {
+    const target = cardTarget || { ownerType: 'client', ownerId: currentClient.id };
     await callFunction('stripe-save-payment-method', {
-      clientId: currentClient.id,
+      ownerType: target.ownerType,
+      ownerId: target.ownerId,
       paymentMethodId,
     });
-    switchView('client');
-    switchClientTab('resumen');
-    loadClientDashboard();
+
+    if (target.ownerType === 'client') {
+      switchView('client');
+      switchClientTab('resumen');
+      loadClientDashboard();
+    } else {
+      switchView(target.returnView);
+      if (target.onDone) target.onDone();
+    }
+    cardTarget = null;
+    document.getElementById('card-add-back-btn').hidden = true;
+    document.getElementById('card-add-description').textContent = 'La usaremos para cobrar tus compras cuando pagues con tu QR. Nunca vemos tu número de tarjeta: lo procesa Stripe de forma segura.';
   }
 
   async function initCardFields() {
@@ -679,7 +740,8 @@
     errorEl.hidden = true;
 
     try {
-      const { clientSecret } = await callFunction('stripe-create-setup-intent', { clientId: currentClient.id });
+      const target = cardTarget || { ownerType: 'client', ownerId: currentClient.id };
+      const { clientSecret } = await callFunction('stripe-create-setup-intent', { ownerType: target.ownerType, ownerId: target.ownerId });
       stripeClientSecret = clientSecret;
 
       stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
@@ -940,6 +1002,16 @@
     switchView('pos');
     resetCashierScan();
     checkStripeConnectStatus();
+    loadCashierCardStatus();
+  }
+
+  async function loadCashierCardStatus() {
+    if (!currentCashier) return;
+    const { data } = await supabaseClient.rpc('get_restaurant_card_summary', { p_restaurant_id: currentCashier.id });
+    const card = data && data[0];
+    document.getElementById('cashier-card-status').textContent = (card && card.card_last4)
+      ? 'Tarjeta · •••• ' + card.card_last4
+      : 'No agregada';
   }
 
   function updateCommissionDisplay(value) {
@@ -1036,6 +1108,7 @@
     switchView('pos');
     resetCashierScan();
     checkStripeConnectStatus();
+    loadCashierCardStatus();
   }
 
   function logoutCashier() {
@@ -1209,15 +1282,27 @@
       return;
     }
 
+    currentAdmin = admin;
     document.getElementById('input-owner-username').value = '';
     document.getElementById('input-owner-password').value = '';
     switchView('owner-dashboard');
     switchOwnerTab('restaurantes');
     loadOwnerDashboard();
     loadPaymentClaims();
+    loadAdminCardStatus();
+  }
+
+  async function loadAdminCardStatus() {
+    if (!currentAdmin) return;
+    const { data } = await supabaseClient.rpc('get_admin_card_summary', { p_admin_id: currentAdmin.id });
+    const card = data && data[0];
+    document.getElementById('owner-card-status').textContent = (card && card.card_last4)
+      ? 'Tarjeta · •••• ' + card.card_last4
+      : 'No agregada';
   }
 
   function logoutOwner() {
+    currentAdmin = null;
     switchView('auth');
   }
 
@@ -1282,6 +1367,39 @@
       alert('No se pudo actualizar. Intenta de nuevo.');
       loadOwnerDashboard();
     }
+  }
+
+  function downloadRestaurantHistory() {
+    if (!currentDetailRestaurantId) return;
+    const restaurant = ownerRestaurants.find(r => r.id === currentDetailRestaurantId);
+    if (!restaurant) return;
+
+    const activity = ownerTransactions
+      .filter(tx => tx.restaurant_id === currentDetailRestaurantId)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const rows = [['Fecha', 'Tipo', 'Cliente', 'Monto', 'Cashback generado']];
+    activity.forEach(tx => {
+      const client = ownerClients.find(c => c.id === tx.client_id);
+      rows.push([
+        new Date(tx.created_at).toISOString(),
+        tx.type === 'purchase' ? 'Compra' : 'Canje',
+        client?.phone || '',
+        Number(tx.amount).toFixed(2),
+        tx.type === 'purchase' ? Number(tx.cashback_generated).toFixed(2) : '',
+      ]);
+    });
+
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `historial-${restaurant.code}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   function openRestaurantDetail(restaurantId) {
