@@ -41,6 +41,9 @@ local RebirthEvent = newRemoteEvent("Rebirth")
 local PromptGamePassEvent = newRemoteEvent("PromptGamePass")
 local StateChangedEvent = newRemoteEvent("StateChanged")
 local GetStateFunction = newRemoteFunction("GetState")
+local SpinWheelEvent = newRemoteEvent("SpinWheel")
+local ClaimDailyRewardEvent = newRemoteEvent("ClaimDailyReward")
+local BuyGemItemEvent = newRemoteEvent("BuyGemItem")
 
 -- ===== Helpers =====
 local function getUnit(id)
@@ -117,6 +120,32 @@ end
 
 local function rebirthRequirement(state)
 	return math.floor(Config.Rebirth.baseRequirement * (Config.Rebirth.requirementGrowth ^ state.rebirths))
+end
+
+-- ===== Daily calendar / playtime-wheel helpers (all UTC-based) =====
+local function todayDateString()
+	return os.date("!%Y-%m-%d")
+end
+
+local function dateStringToEpoch(dateString)
+	local y, m, d = dateString:match("(%d+)-(%d+)-(%d+)")
+	return os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12, min = 0, sec = 0 })
+end
+
+local function daysBetween(fromDate, toDate)
+	return math.floor((dateStringToEpoch(toDate) - dateStringToEpoch(fromDate)) / 86400 + 0.5)
+end
+
+local function grantReward(state, reward)
+	if reward.kind == "cash" then
+		state.cash += reward.amount
+	elseif reward.kind == "gems" then
+		state.gems += reward.amount
+	end
+end
+
+local function currentDailyRewardIndex(state)
+	return ((state.loginStreak - 1) % #Config.DailyRewards) + 1
 end
 
 -- Forward-declared so the plot prompts below (built before player state
@@ -271,11 +300,32 @@ local function defaultState()
 	return {
 		cash = 0,
 		bank = 0,
+		gems = 0,
 		ownedUnitIds = {},
 		rebirths = 0,
 		shieldUntil = 0,
 		lastStealAt = {},
+		-- Free-time engagement rewards (never tied to real money spend):
+		dailyPlaySeconds = 0,
+		lastPlayDate = "",
+		wheelEligible = false,
+		wheelClaimedToday = false,
+		loginStreak = 0,
+		lastLoginDate = "",
+		dailyRewardClaimedDate = "",
 	}
+end
+
+-- Fills in any fields a save from before a feature existed is missing, so
+-- old saves keep working instead of erroring on a nil field.
+local function withDefaults(saved)
+	local defaults = defaultState()
+	for key, value in pairs(defaults) do
+		if saved[key] == nil then
+			saved[key] = value
+		end
+	end
+	return saved
 end
 
 local function loadState(player)
@@ -284,8 +334,7 @@ local function loadState(player)
 		return SaveStore:GetAsync(key)
 	end)
 	if ok and saved then
-		saved.lastStealAt = saved.lastStealAt or {}
-		return saved
+		return withDefaults(saved)
 	end
 	return defaultState()
 end
@@ -372,24 +421,52 @@ pushState = function(player, state)
 		leaderstats.Cash.Value = math.floor(state.cash)
 		leaderstats.Rebirths.Value = state.rebirths
 	end
+	local today = todayDateString()
 	StateChangedEvent:FireClient(player, {
 		cash = math.floor(state.cash),
 		bank = math.floor(state.bank),
 		bankCap = bankCapFor(player),
+		gems = state.gems,
 		cashPerSecond = cashPerSecondFor(state, player),
 		ownedUnitIds = state.ownedUnitIds,
 		rebirths = state.rebirths,
 		rebirthRequirement = rebirthRequirement(state),
 		shieldUntil = state.shieldUntil,
 		lastStolenAmount = state.lastStolenAmount,
+		wheelEligible = state.wheelEligible,
+		dailyPlaySeconds = state.dailyPlaySeconds,
+		lastWheelReward = state.lastWheelReward,
+		loginStreak = state.loginStreak,
+		dailyRewardAvailable = state.dailyRewardClaimedDate ~= today,
+		dailyRewardIndex = currentDailyRewardIndex(state),
+		lastDailyRewardLabel = state.lastDailyRewardLabel,
 	})
 	state.lastStolenAmount = nil
+	state.lastWheelReward = nil
+	state.lastDailyRewardLabel = nil
 end
 
 Players.PlayerAdded:Connect(function(player)
 	local state = loadState(player)
 	playerStates[player.UserId] = state
 	refreshGamePassCache(player)
+
+	-- Login streak: consecutive UTC days logged in advances it, any gap resets
+	-- it to 1. Rejoining the same day just leaves it as-is.
+	local today = todayDateString()
+	if state.lastLoginDate == "" then
+		state.loginStreak = 1
+	elseif state.lastLoginDate ~= today then
+		local gap = daysBetween(state.lastLoginDate, today)
+		state.loginStreak = (gap == 1) and (state.loginStreak + 1) or 1
+	end
+	state.lastLoginDate = today
+	if state.lastPlayDate ~= today then
+		state.lastPlayDate = today
+		state.dailyPlaySeconds = 0
+		state.wheelClaimedToday = false
+		state.wheelEligible = false
+	end
 
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
@@ -440,10 +517,11 @@ task.spawn(function()
 	end
 end)
 
--- ===== Passive income tick =====
+-- ===== Passive income + playtime-wheel tick =====
 task.spawn(function()
 	while true do
 		task.wait(1)
+		local today = todayDateString()
 		for userId, state in pairs(playerStates) do
 			local player = Players:GetPlayerByUserId(userId)
 			if player then
@@ -452,6 +530,18 @@ task.spawn(function()
 					state.cash += production
 				else
 					state.bank = math.min(state.bank + production, bankCapFor(player))
+				end
+
+				-- Rolls over mid-session for anyone still connected at UTC midnight.
+				if state.lastPlayDate ~= today then
+					state.lastPlayDate = today
+					state.dailyPlaySeconds = 0
+					state.wheelClaimedToday = false
+					state.wheelEligible = false
+				end
+				state.dailyPlaySeconds += 1
+				if not state.wheelClaimedToday and state.dailyPlaySeconds >= Config.SessionWheel.requiredMinutes * 60 then
+					state.wheelEligible = true
 				end
 			end
 		end
@@ -517,20 +607,92 @@ PromptGamePassEvent.OnServerEvent:Connect(function(player, passKey)
 	end
 end)
 
+-- Free 15-minutes-played wheel spin. The outcome is rolled here on the
+-- server (never the client) and is paid for with time, not Robux, so it's
+-- a loyalty bonus rather than a gambling mechanic.
+SpinWheelEvent.OnServerEvent:Connect(function(player)
+	local state = playerStates[player.UserId]
+	if not state or not state.wheelEligible or state.wheelClaimedToday then
+		return
+	end
+
+	local totalWeight = 0
+	for _, reward in ipairs(Config.SessionWheel.rewards) do
+		totalWeight += reward.weight
+	end
+	local roll = math.random() * totalWeight
+	local chosen = Config.SessionWheel.rewards[1]
+	local accumulated = 0
+	for _, reward in ipairs(Config.SessionWheel.rewards) do
+		accumulated += reward.weight
+		if roll <= accumulated then
+			chosen = reward
+			break
+		end
+	end
+
+	grantReward(state, chosen)
+	state.wheelClaimedToday = true
+	state.wheelEligible = false
+	state.lastWheelReward = chosen.label
+	pushState(player, state)
+end)
+
+-- Daily login calendar. Advancing the streak happens once at join
+-- (PlayerAdded); this just grants today's slot in the 7-day cycle, once.
+ClaimDailyRewardEvent.OnServerEvent:Connect(function(player)
+	local state = playerStates[player.UserId]
+	if not state then
+		return
+	end
+	local today = todayDateString()
+	if state.dailyRewardClaimedDate == today then
+		return
+	end
+	local reward = Config.DailyRewards[currentDailyRewardIndex(state)]
+	grantReward(state, reward)
+	state.dailyRewardClaimedDate = today
+	state.lastDailyRewardLabel = reward.label
+	pushState(player, state)
+end)
+
+-- Gems (earned only from the wheel/calendar above) spent on shields.
+BuyGemItemEvent.OnServerEvent:Connect(function(player, itemKey)
+	local state = playerStates[player.UserId]
+	local item = Config.GemShop[itemKey]
+	if not state or not item then
+		return
+	end
+	if state.gems < item.gems then
+		return
+	end
+	state.gems -= item.gems
+	local now = os.time()
+	state.shieldUntil = math.max(state.shieldUntil, now) + item.seconds
+	pushState(player, state)
+end)
+
 GetStateFunction.OnServerInvoke = function(player)
 	local state = playerStates[player.UserId]
 	if not state then
 		return nil
 	end
+	local today = todayDateString()
 	return {
 		cash = math.floor(state.cash),
 		bank = math.floor(state.bank),
 		bankCap = bankCapFor(player),
+		gems = state.gems,
 		cashPerSecond = cashPerSecondFor(state, player),
 		ownedUnitIds = state.ownedUnitIds,
 		rebirths = state.rebirths,
 		rebirthRequirement = rebirthRequirement(state),
 		shieldUntil = state.shieldUntil,
+		wheelEligible = state.wheelEligible,
+		dailyPlaySeconds = state.dailyPlaySeconds,
+		loginStreak = state.loginStreak,
+		dailyRewardAvailable = state.dailyRewardClaimedDate ~= today,
+		dailyRewardIndex = currentDailyRewardIndex(state),
 	}
 end
 

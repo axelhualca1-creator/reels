@@ -45,6 +45,43 @@ Config.Rebirth = {
 	multiplierPerRebirth = 0.4, -- +40% cash-per-second per rebirth, stacking
 }
 
+-- Free (no real money involved) engagement rewards. The wheel is a random
+-- pick, but it's paid for with playtime, not Robux -- that's the line that
+-- keeps this from being a gambling mechanic instead of a loyalty bonus.
+Config.SessionWheel = {
+	requiredMinutes = 15, -- connected+playing time today before a spin unlocks
+	rewards = {
+		{ label = "$200 Cash", kind = "cash", amount = 200, weight = 40 },
+		{ label = "$500 Cash", kind = "cash", amount = 500, weight = 25 },
+		{ label = "$1,500 Cash", kind = "cash", amount = 1500, weight = 15 },
+		{ label = "10 Gems", kind = "gems", amount = 10, weight = 12 },
+		{ label = "50 Gems", kind = "gems", amount = 50, weight = 6 },
+		{ label = "$10,000 JACKPOT", kind = "cash", amount = 10000, weight = 2 },
+	},
+}
+
+-- Daily login calendar. Logging in on consecutive UTC days advances the
+-- streak; missing a day resets it to 1. The reward cycles through this list
+-- (day 8 = this list's day 1 again, etc.) so the streak counter can climb
+-- forever while the rewards stay a fixed weekly loop.
+Config.DailyRewards = {
+	{ day = 1, kind = "cash", amount = 500, label = "$500" },
+	{ day = 2, kind = "gems", amount = 5, label = "5 Gems" },
+	{ day = 3, kind = "cash", amount = 1500, label = "$1,500" },
+	{ day = 4, kind = "gems", amount = 10, label = "10 Gems" },
+	{ day = 5, kind = "cash", amount = 4000, label = "$4,000" },
+	{ day = 6, kind = "gems", amount = 20, label = "20 Gems" },
+	{ day = 7, kind = "cash", amount = 15000, label = "$15,000 Weekly Bonus" },
+}
+
+-- Gems (earned only from the wheel/daily calendar above, never sold for
+-- Robux) can be spent on shields -- gives the login/playtime loop a use
+-- that feeds back into the steal mechanic.
+Config.GemShop = {
+	shield1Hour = { gems = 5, seconds = 3600, label = "1-Hour Shield" },
+	shield24Hour = { gems = 30, seconds = 86400, label = "24-Hour Shield" },
+}
+
 -- Fill these in from the Roblox Creator Dashboard after you publish
 -- (Monetization > Passes / Developer Products). Left at 0 they safely no-op.
 Config.GamePassIds = {

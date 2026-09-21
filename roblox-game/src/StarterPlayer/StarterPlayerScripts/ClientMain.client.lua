@@ -17,6 +17,9 @@ local RebirthEvent = Remotes:WaitForChild("Rebirth")
 local StateChangedEvent = Remotes:WaitForChild("StateChanged")
 local GetStateFunction = Remotes:WaitForChild("GetState")
 local PromptGamePassEvent = Remotes:WaitForChild("PromptGamePass")
+local SpinWheelEvent = Remotes:WaitForChild("SpinWheel")
+local ClaimDailyRewardEvent = Remotes:WaitForChild("ClaimDailyReward")
+local BuyGemItemEvent = Remotes:WaitForChild("BuyGemItem")
 
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -78,6 +81,22 @@ rebirthButton.TextColor3 = Color3.new(1, 1, 1)
 rebirthButton.Text = "REBIRTH"
 rebirthButton.Parent = topBar
 
+-- Free spin button: only visible once 15 minutes of playtime today is
+-- banked (state.wheelEligible). The prize is decided server-side; this is
+-- just the reveal animation for a reward already rolled with math.random
+-- on the server, paid for with time rather than money.
+local wheelButton = Instance.new("TextButton")
+wheelButton.Size = UDim2.new(0, 220, 0, 50)
+wheelButton.AnchorPoint = Vector2.new(0.5, 0)
+wheelButton.Position = UDim2.new(0.5, 0, 0.16, 0)
+wheelButton.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+wheelButton.Font = Enum.Font.GothamBold
+wheelButton.TextScaled = true
+wheelButton.TextColor3 = Color3.new(1, 1, 1)
+wheelButton.Text = "🎡 FREE SPIN!"
+wheelButton.Visible = false
+wheelButton.Parent = screenGui
+
 -- ===== Toast for steal notifications =====
 local toastLabel = Instance.new("TextLabel")
 toastLabel.Size = UDim2.new(0, 400, 0, 40)
@@ -98,10 +117,69 @@ local function showToast(text)
 	end)
 end
 
+-- ===== Daily login calendar =====
+local dailyFrame = Instance.new("Frame")
+dailyFrame.Size = UDim2.new(0, 470, 0, 80)
+dailyFrame.AnchorPoint = Vector2.new(0.5, 0)
+dailyFrame.Position = UDim2.new(0.5, 0, 0, 76)
+dailyFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+dailyFrame.BackgroundTransparency = 0.1
+dailyFrame.Parent = screenGui
+
+local dailyLayout = Instance.new("UIListLayout")
+dailyLayout.FillDirection = Enum.FillDirection.Horizontal
+dailyLayout.Padding = UDim.new(0, 4)
+dailyLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+dailyLayout.Parent = dailyFrame
+
+local dailyCells = {}
+for order, reward in ipairs(Config.DailyRewards) do
+	local cell = Instance.new("Frame")
+	cell.Size = UDim2.new(0, 50, 0, 60)
+	cell.LayoutOrder = order
+	cell.BackgroundColor3 = Color3.fromRGB(50, 50, 58)
+	cell.Parent = dailyFrame
+
+	local dayLabel = Instance.new("TextLabel")
+	dayLabel.Size = UDim2.new(1, 0, 0.4, 0)
+	dayLabel.BackgroundTransparency = 1
+	dayLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	dayLabel.Font = Enum.Font.Gotham
+	dayLabel.TextScaled = true
+	dayLabel.Text = "Day " .. reward.day
+	dayLabel.Parent = cell
+
+	local rewardLabel = Instance.new("TextLabel")
+	rewardLabel.Size = UDim2.new(1, 0, 0.6, 0)
+	rewardLabel.Position = UDim2.new(0, 0, 0.4, 0)
+	rewardLabel.BackgroundTransparency = 1
+	rewardLabel.TextColor3 = Color3.new(1, 1, 1)
+	rewardLabel.Font = Enum.Font.GothamBold
+	rewardLabel.TextScaled = true
+	rewardLabel.Text = reward.label
+	rewardLabel.Parent = cell
+
+	dailyCells[order] = cell
+end
+
+local claimDailyButton = Instance.new("TextButton")
+claimDailyButton.Size = UDim2.new(0, 90, 0, 60)
+claimDailyButton.LayoutOrder = 99
+claimDailyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 90)
+claimDailyButton.Font = Enum.Font.GothamBold
+claimDailyButton.TextScaled = true
+claimDailyButton.TextColor3 = Color3.new(1, 1, 1)
+claimDailyButton.Text = "Claim"
+claimDailyButton.Parent = dailyFrame
+
+claimDailyButton.MouseButton1Click:Connect(function()
+	ClaimDailyRewardEvent:FireServer()
+end)
+
 -- ===== Shop panel =====
 local shopFrame = Instance.new("ScrollingFrame")
-shopFrame.Size = UDim2.new(0, 280, 1, -160)
-shopFrame.Position = UDim2.new(1, -290, 0, 80)
+shopFrame.Size = UDim2.new(0, 280, 1, -246)
+shopFrame.Position = UDim2.new(1, -290, 0, 166)
 shopFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 shopFrame.BorderSizePixel = 0
 shopFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -146,8 +224,8 @@ end
 
 -- ===== Monetization panel =====
 local passFrame = Instance.new("Frame")
-passFrame.Size = UDim2.new(0, 220, 0, 140)
-passFrame.Position = UDim2.new(0, 10, 1, -150)
+passFrame.Size = UDim2.new(0, 220, 0, 270)
+passFrame.Position = UDim2.new(0, 10, 1, -280)
 passFrame.BackgroundTransparency = 1
 passFrame.Parent = screenGui
 
@@ -187,6 +265,25 @@ for productId in pairs(Config.DeveloperProducts) do
 	end)
 end
 
+-- Gem shop: spends gems earned from the wheel/daily calendar, never Robux.
+local function makeGemButton(itemKey, item)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 36)
+	btn.BackgroundColor3 = Color3.fromRGB(160, 90, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextScaled = true
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Text = item.label .. " (💎" .. item.gems .. ")"
+	btn.Parent = passFrame
+	btn.MouseButton1Click:Connect(function()
+		BuyGemItemEvent:FireServer(itemKey)
+	end)
+end
+
+for itemKey, item in pairs(Config.GemShop) do
+	makeGemButton(itemKey, item)
+end
+
 -- ===== Hint text =====
 local hint = Instance.new("TextLabel")
 hint.Size = UDim2.new(0, 500, 0, 30)
@@ -201,12 +298,13 @@ hint.Parent = screenGui
 
 -- ===== State sync =====
 local currentShieldUntil = 0
+local spinInFlight = false
 
 local function applyState(state)
 	if not state then
 		return
 	end
-	cashLabel.Text = "$" .. formatNumber(state.cash) .. "  (" .. formatNumber(state.cashPerSecond) .. "/sec)"
+	cashLabel.Text = "$" .. formatNumber(state.cash) .. "  (" .. formatNumber(state.cashPerSecond) .. "/sec)  |  💎" .. formatNumber(state.gems)
 	bankLabel.Text = "Vault: " .. formatNumber(state.bank) .. " / " .. formatNumber(state.bankCap)
 	rebirthButton.Text = string.format(
 		"REBIRTH\n%s / %s  [x%d]",
@@ -235,6 +333,35 @@ local function applyState(state)
 	if state.lastStolenAmount and state.lastStolenAmount > 0 then
 		showToast("You stole $" .. formatNumber(state.lastStolenAmount) .. "!")
 	end
+
+	-- Free 15-minute wheel
+	if not spinInFlight then
+		wheelButton.Visible = state.wheelEligible == true
+	end
+	if state.lastWheelReward then
+		showToast("🎡 You won " .. state.lastWheelReward .. "!")
+	end
+
+	-- Daily login calendar
+	for order, cell in ipairs(dailyCells) do
+		if order == state.dailyRewardIndex then
+			cell.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+		else
+			cell.BackgroundColor3 = Color3.fromRGB(50, 50, 58)
+		end
+	end
+	if state.dailyRewardAvailable then
+		claimDailyButton.Text = "Claim\nDay " .. tostring(state.loginStreak or 1)
+		claimDailyButton.BackgroundColor3 = Color3.fromRGB(0, 170, 90)
+		claimDailyButton.Active = true
+	else
+		claimDailyButton.Text = "Claimed\n✓"
+		claimDailyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+		claimDailyButton.Active = false
+	end
+	if state.lastDailyRewardLabel then
+		showToast("📅 Daily reward: " .. state.lastDailyRewardLabel .. "!")
+	end
 end
 
 task.spawn(function()
@@ -251,6 +378,31 @@ end)
 
 rebirthButton.MouseButton1Click:Connect(function()
 	RebirthEvent:FireServer()
+end)
+
+wheelButton.MouseButton1Click:Connect(function()
+	if spinInFlight then
+		return
+	end
+	spinInFlight = true
+	SpinWheelEvent:FireServer()
+
+	-- Purely cosmetic suspense -- the real reward was already rolled
+	-- server-side; this just delays the reveal a beat so it feels like a spin.
+	task.spawn(function()
+		local labels = {}
+		for _, reward in ipairs(Config.SessionWheel.rewards) do
+			table.insert(labels, reward.label)
+		end
+		local endTime = os.clock() + 1.2
+		while os.clock() < endTime do
+			wheelButton.Text = "🎡 " .. labels[math.random(1, #labels)]
+			task.wait(0.1)
+		end
+		wheelButton.Visible = false
+		wheelButton.Text = "🎡 FREE SPIN!"
+		spinInFlight = false
+	end)
 end)
 
 StateChangedEvent.OnClientEvent:Connect(applyState)

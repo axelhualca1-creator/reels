@@ -79,6 +79,30 @@ sync in git.
      or `{ kind = "shield", seconds = ... }`
 4. Re-sync/republish.
 
+## Retention loops (free — no real money involved)
+
+Two extra systems reward players just for showing up and sticking around,
+which is exactly what Roblox's Creator Rewards program pays you for:
+
+- **15-minute playtime wheel** (`Config.SessionWheel`) — once a player has
+  been connected and playing for a cumulative 15 minutes in a UTC day (it
+  doesn't have to be one unbroken sitting), a "🎡 FREE SPIN!" button
+  appears. The prize (cash or Gems) is rolled server-side with a weighted
+  random pick — it's random, but it costs playtime, not Robux, which is
+  the line that keeps it a loyalty bonus instead of a gambling mechanic.
+  One spin per player per day.
+- **Daily login calendar** (`Config.DailyRewards`) — logging in on
+  consecutive UTC days advances a streak counter; missing a day resets it
+  to 1. The reward shown/claimed each day cycles through a fixed 7-day
+  list (day 8 loops back to day 1's reward, day 15 to day 1 again, etc.),
+  so the streak can climb forever while the actual rewards stay a simple
+  weekly loop. Claiming is a manual button click, once per day.
+- **Gems** — the currency both of the above hand out (never sold for
+  Robux) — can be spent in a small Gem Shop (`Config.GemShop`) on timed
+  shields, tying the login/playtime loop back into the steal mechanic:
+  the more consistently someone plays, the better they can defend their
+  base.
+
 ## Tuning the economy
 
 Everything lives in `Config.lua`: unit costs/production (`Config.Units`),
