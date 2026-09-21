@@ -1,20 +1,42 @@
 # Sigma Grind Simulator
 
-A deliberately simple, low-art "tapper/simulator" Roblox game: tap to earn
-coins, buy upgrades, rebirth for a permanent multiplier, repeat. This genre
-(tappers, simulators, tycoons) is the standard low-budget Roblox format —
-it's quick to build and can monetize, but it succeeds or fails almost
-entirely on discovery (ads, being featured, going viral on TikTok/YouTube
-Shorts), not on code. Nothing here can guarantee income; it gives you a
-real, working game to launch, iterate on, and market.
+A collector-tycoon Roblox game with a steal-from-other-players twist — the
+same core format as "Steal a Brainrot", currently the biggest genre on the
+platform (25M+ concurrent players at its peak). Each player gets a plot,
+buys units that generate cash per second, must physically visit their own
+vault to collect the accumulated bank, and can raid other players' vaults
+if they're not shielded. Original units/theme only — no copied characters
+or trademarks.
 
-What this intentionally does **not** include: gacha/loot-box mechanics
-(randomized rewards for real money), fake countdown timers, or other
-manipulative dark patterns. Those are increasingly regulated as gambling
-in several countries and Roblox's own audience is largely minors — not
-worth the legal/reputational risk. Everything monetizable here is a
-fixed-price, clearly-labeled purchase (game pass or coin pack), same as
-any legitimate simulator game on the platform.
+Nothing here includes gacha/loot-box mechanics (randomized rewards for real
+money) — those are increasingly regulated as gambling and Roblox's audience
+is largely minors. Every Robux purchase in this game is a fixed-price,
+clearly-labeled item (game pass or coin/shield pack), same as any
+legitimate simulator/tycoon on the platform.
+
+## How you (the developer) actually get paid
+
+Two separate revenue streams, both real, both already wired up in this
+project:
+
+1. **Direct purchases** — game passes (VIP, Extra Vault, Auto-Collect) and
+   developer products (cash packs, timed shields) that players buy with
+   Robux. Roblox takes its cut (~30%), you keep the rest in Robux.
+2. **Roblox Creator Rewards** (replaced the old Engagement-Based Payouts
+   program in July 2025) — Roblox pays you Robux **just for players
+   spending time in your game**, no purchase required: currently a flat 5
+   Robux per "Active Spender" per day, plus a 35% revenue share, when your
+   game is one of the first 3 experiences that player visits for 10+
+   minutes that day. ("Active Spender" = anyone who spent $9.99+ anywhere
+   on Roblox in the last 60 days.) This is why session length and daily
+   retention matter as much as in-game purchases — the steal mechanic
+   exists specifically to keep players coming back to check on their base.
+
+Robux from either stream converts to real cash through **Developer
+Exchange (DevEx)** once you meet Roblox's eligibility requirements (13+,
+identity verification, Premium membership, and a minimum Robux balance —
+check [Roblox's current DevEx page](https://create.roblox.com/docs) since
+the threshold has changed over time).
 
 ## Structure (Rojo project)
 
@@ -23,9 +45,13 @@ roblox-game/
   default.project.json
   src/
     ReplicatedStorage/Config.lua        -- all game balance in one file
-    ServerScriptService/Main.server.lua -- currency, upgrades, rebirths, purchases
-    StarterPlayer/StarterPlayerScripts/ClientMain.client.lua -- UI, built in code
+    ServerScriptService/Main.server.lua -- plots, units, steal, rebirth, purchases
+    StarterPlayer/StarterPlayerScripts/ClientMain.client.lua -- shop/rebirth/monetization UI
 ```
+
+The playable world (plots, vaults, unit models) is built entirely by
+`Main.server.lua` at runtime — there are no binary Studio files to keep in
+sync in git.
 
 ## Running it in Roblox Studio
 
@@ -35,51 +61,45 @@ roblox-game/
    rojo serve
    ```
 3. In Roblox Studio, open the Rojo plugin panel and click **Connect**.
-   Your whole game tree syncs in.
-4. Press Play to test. Tapping, upgrades, and rebirth all work immediately
-   with no setup — game passes/dev products safely no-op until you wire
-   up real asset IDs (next section).
+4. Press Play (use "Play Here" with a couple of test accounts, or Studio's
+   multi-player test tool, to see the steal mechanic work between two
+   plots). Everything works immediately — game passes/dev products safely
+   no-op until you wire up real asset IDs.
 
 ## Turning on real monetization
 
-1. Publish the place to Roblox (File > Publish to Roblox, or via
-   `rojo build -o game.rbxlx` and upload it).
-2. In the [Creator Dashboard](https://create.roblox.com/dashboard/creations)
-   for your game, go to **Monetization**:
-   - Create Game Passes: "2x Coins", "Auto Tapper", "VIP" (or whatever you
-     want — these are just examples).
-   - Create Developer Products: one or more coin packs (e.g. 5,000 coins
-     for a small Robux price, 30,000 for a bigger one).
-3. Copy the numeric IDs it gives you into `src/ReplicatedStorage/Config.lua`:
-   - `Config.GamePassIds.DoubleCoins`, `.AutoTapper`, `.VIP`
-   - `Config.DeveloperProducts[<productId>] = <coinsGranted>`
-4. Re-sync/republish. Purchases now actually grant the pass/coins and
-   Roblox takes its standard revenue cut automatically — no extra billing
-   code needed.
+1. Publish the place to Roblox (File > Publish to Roblox).
+2. In the [Creator Dashboard](https://create.roblox.com/dashboard/creations),
+   go to **Monetization**:
+   - Create Game Passes: VIP, Extra Vault, Auto-Collect (or your own names).
+   - Create Developer Products: cash packs and/or timed shields.
+3. Copy the IDs into `src/ReplicatedStorage/Config.lua`:
+   - `Config.GamePassIds.VIP` / `.ExtraVault` / `.AutoCollect`
+   - `Config.DeveloperProducts[<productId>] = { kind = "cash", amount = ... }`
+     or `{ kind = "shield", seconds = ... }`
+4. Re-sync/republish.
 
 ## Tuning the economy
 
-Everything that affects how fast players progress (and how tempting it is
-to spend Robux to skip the grind) lives in `Config.lua`:
-`StartingCoinsPerTap`, each upgrade's `baseCost`/`costGrowth`/`tapAdd`, and
-the rebirth requirement curve. Raise `costGrowth` to make grinding slower
-(more pressure to buy passes); lower it to keep it free-friendly. This is
-the actual lever for revenue — not the art, which is intentionally minimal.
+Everything lives in `Config.lua`: unit costs/production (`Config.Units`),
+how fast the bank fills and caps out (`Config.Bank`), how punishing steals
+are (`Config.Steal.stealPercent`, cooldowns, grace shield), and the rebirth
+curve (`Config.Rebirth`). Raising `stealPercent` or lowering the grace
+shield makes the game more PvP-aggressive (more session time, more shield
+purchases); lowering it makes it more relaxed/idle-friendly.
 
 ## What actually drives revenue on games like this
 
-The game mechanics above are table stakes, not the differentiator. What
-tends to matter more in practice:
-- A thumbnail/icon and game name that reads instantly on a phone screen.
-- The first 10 seconds of gameplay (a new player must understand and enjoy
-  tapping before you ask for anything).
-- Off-platform traffic: short-form video (TikTok/Shorts/Reels) showing
-  the game, since Roblox's own discovery algorithm favors games that
-  already have concurrent players.
-- Iterating the shop/rebirth pacing based on real player retention data
-  (Roblox Analytics tab), not guessing once and walking away.
+- **Session length and daily return rate** matter more than anything in
+  the code — that's literally what Roblox pays you for now via Creator
+  Rewards, independent of purchases.
+- A thumbnail/icon and name that reads instantly on a phone screen.
+- Off-platform traffic (TikTok/Shorts clips of a base getting raided) —
+  Roblox's own discovery algorithm favors games that already have
+  concurrent players, so early traction has to come from somewhere else.
+- Iterating shield/steal pacing based on real player retention data
+  (Roblox Analytics), not guessing once and walking away.
 
-None of that can be scripted for you in one shot — it's ongoing product
-work. Happy to keep iterating on specific pieces (new upgrade tiers, a
-codes/rewards system, a UI redesign, leaderboard, referral rewards, etc.)
-once you've got this running and see what players actually do with it.
+Happy to keep iterating — more unit tiers, a trading system, leaderboards,
+referral rewards, a proper base-building layout — once this is live and
+you can see what players actually do with it.
