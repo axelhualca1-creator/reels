@@ -88,7 +88,10 @@ rebirthButton.Parent = topBar
 local wheelButton = Instance.new("TextButton")
 wheelButton.Size = UDim2.new(0, 220, 0, 50)
 wheelButton.AnchorPoint = Vector2.new(0.5, 0)
-wheelButton.Position = UDim2.new(0.5, 0, 0.16, 0)
+-- Fixed pixel offset (not a screen-height fraction), stacked directly above
+-- the daily calendar strip -- see the matching offsets on dailyFrame,
+-- shopFrame and passFrame below, all laid out in this same column.
+wheelButton.Position = UDim2.new(0.5, 0, 0, 76)
 wheelButton.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
 wheelButton.Font = Enum.Font.GothamBold
 wheelButton.TextScaled = true
@@ -121,7 +124,7 @@ end
 local dailyFrame = Instance.new("Frame")
 dailyFrame.Size = UDim2.new(0, 470, 0, 80)
 dailyFrame.AnchorPoint = Vector2.new(0.5, 0)
-dailyFrame.Position = UDim2.new(0.5, 0, 0, 76)
+dailyFrame.Position = UDim2.new(0.5, 0, 0, 132) -- leaves room for wheelButton above it
 dailyFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 dailyFrame.BackgroundTransparency = 0.1
 dailyFrame.Parent = screenGui
@@ -178,8 +181,8 @@ end)
 
 -- ===== Shop panel =====
 local shopFrame = Instance.new("ScrollingFrame")
-shopFrame.Size = UDim2.new(0, 280, 1, -246)
-shopFrame.Position = UDim2.new(1, -290, 0, 166)
+shopFrame.Size = UDim2.new(0, 280, 1, -302)
+shopFrame.Position = UDim2.new(1, -290, 0, 222)
 shopFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 shopFrame.BorderSizePixel = 0
 shopFrame.CanvasSize = UDim2.new(0, 0, 0, 0)

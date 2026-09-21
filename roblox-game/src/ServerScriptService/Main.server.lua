@@ -224,7 +224,7 @@ for i = 1, Config.Plot.count do
 		local sr = math.floor((s - 1) / slotsPerRow)
 		local offset = Vector3.new(
 			(sc - (slotsPerRow - 1) / 2) * 4,
-			2,
+			2.6, -- clears the baseplate's top surface (base is 2 studs tall, centered on the plot's Y) so unit parts (3-stud cubes) don't sink into it
 			(sr * 5) - Config.Plot.size / 2 + 14
 		)
 		table.insert(unitSlotOffsets, base.Position + offset)
